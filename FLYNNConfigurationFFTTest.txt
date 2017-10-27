@@ -1,0 +1,7 @@
+"/Sample Data/ffttestsignal_"
+"01"
+"-200,0"
+"10,100"
+"ffttestsignal_flynn_"
+"FFT,S110,-500,1496,Win"
+"FFT,S111,-500,1496,Lose"
