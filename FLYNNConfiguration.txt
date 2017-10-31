@@ -2,11 +2,11 @@
 "01,02,03,04,05,06,07,08,09,10" % File suffixes (participants)
 "-200,0" % Baseline correction
 "10,100" % Artifact parameters (gradient, amplitude)
-"cognitive_assessment_flynn_" % Output file prefic (same suffixes as input)
+"cognitive_assessment_flynn_" % Output file prefix (same suffixes as input)
 "ERP,S110,-200,596,Win" % ERP analysis, marker, start time, end time, condition name
 "ERP,S111,-200,596,Lose"
 "ERP,S110,S111,-200,596,All" 
 "FFT,S110,-500,1496,Win" % FFT analysis, marker, start time, end time, condition name
 "FFT,S111,-500,1496,Lose"
-"WAV,S110,-504,1496,-300,-100,1,30,59,6,Win" % WAV analysis, marker, start time, end time, start freq, end freq, steps, condition name
+"WAV,S110,-504,1496,-300,-100,1,30,59,6,Win" % WAV analysis, marker, start time, end time, baseline start, baseline end, start freq, end freq, steps, range cycles, condition name
 "WAV,S111,-504,1496,-300,-100,1,30,59,6,Lose"
