@@ -1,6 +1,6 @@
-"/Sample Data/cognitive_assessment_" % File prefix (may include directory)
-"01,02,03,04,05,06,07,08,09,10" % File suffixes (participants)
-"-200,0" % Baseline correction
+"./Sample Data/cognitive_assessment_" % File prefix (may include directory)
+"01,02,03" % File suffixes (participants)
+"-200,0" % Baseline correction (use [] for no baseline)
 "10,100" % Artifact parameters (gradient, amplitude)
 "cognitive_assessment_flynn_" % Output file prefix (same suffixes as input)
 "ERP,S110,-200,596,Win" % ERP analysis, marker, start time, end time, condition name
@@ -8,5 +8,5 @@
 "ERP,S110,S111,-200,596,All" 
 "FFT,S110,-500,1496,Win" % FFT analysis, marker, start time, end time, condition name
 "FFT,S111,-500,1496,Lose"
-"WAV,S110,-504,1496,-300,-100,1,30,59,6,Win" % WAV analysis, marker, start time, end time, baseline start, baseline end, start freq, end freq, steps, range cycles, condition name
+"WAV,S110,-504,1496,[],[],1,30,59,6,Win" % WAV analysis, marker, start time, end time, baseline start ([] = none), baseline end ([] = none), start freq, end freq, steps, range cycles, condition name
 "WAV,S111,-504,1496,-300,-100,1,30,59,6,Lose"

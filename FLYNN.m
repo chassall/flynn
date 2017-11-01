@@ -1,31 +1,18 @@
-% FLYNN 3.0
+% FLYNN 3.0.1
 % C. Hassall and O. Krigolson
 % October, 2017
 %
 % FLYNN 1.0 average eeg text file input, single .mat output
 % FLYNN 2.0 trial eeg text file input, multiple .mat output
-% FLYNN 3.0 .mat input (EEGLAB format)
+% FLYNN 3.0 .mat input (EEGLAB format), multiple .mat output
 
 % Requires: disc.wav, flynn.jpg, stats toolbox
 
-% TODO
-% - deal with missing config file
-% - restrict all ERPs to have the same timepoints?
-% - warn if about to overwrite exisiting .mat files?
-% - output a text summary of artifacts by participant and condition
-% - make artifact rejection a function
-% - deal with the case that there is only one condition (extra legend entries at end)
-tic
-% FLYNN version number
-version = '3.0';
-
-% Location of EEG files
-% For regular users, all files will be in one location (the Export folder)
-% Pro users can change this if they want to want to run in a different directory
-working_directory = './';
+% FLYNN version number (major, minor, revision)
+version = '3.0.1';
 
 % Load config file
-configFileId = fopen([working_directory 'FLYNNConfiguration.txt']);
+configFileId = fopen('FLYNNConfiguration.txt');
 C = textscan(configFileId, '%q','CommentStyle','%');
 fclose(configFileId);
 answer = C{1};
@@ -35,7 +22,6 @@ sound(y,Fs);
 
 % Parse ANSWER
 basefilename = answer{1};
-% subjectnumbers = str2num(answer{2});
 subjectnumbers = strsplit(answer{2},',');
 numberofsubjects = length(subjectnumbers);
 baselinesettings = str2num(answer{3});
@@ -69,6 +55,12 @@ numFftMarkersByCondition = [];
 WAV.markers = {};
 WAV.startTime = [];
 WAV.endTime = [];
+WAV.baselineStart = [];
+WAV.baselineEnd = [];
+WAV.frequencyStart = [];
+WAV.frequencyEnd = [];
+WAV.frequencySteps = [];
+WAV.rangeCycles = [];
 WAV.conditions = {};
 numWavConditions = 0;
 numWavMarkersByCondition = [];
@@ -132,16 +124,21 @@ for p = 1:numberofsubjects
     
     %% Data Import
     disp(['Current Subject Being Loaded: ' subjectnumbers{p}]);
-    filename = [working_directory basefilename subjectnumbers{p} '.mat'];
+    filename = [basefilename subjectnumbers{p} '.mat'];
     load(filename);
     chanlocs = EEG.chanlocs;
     srate = EEG.srate;
+    times = EEG.xmin*1000:1000/EEG.srate:EEG.xmax*1000;
     DISC.EEGSum = [DISC.EEGSum; str2num(subjectnumbers{p}) EEG.nbchan EEG.pnts];
     
-    %% Baseline Correction
-    baselinePoints = (baselinesettings/1000 - EEG.xmin) * EEG.srate;
-    baseline = mean(EEG.data(:,baselinePoints(1):baselinePoints(2) ,:),2);
-    EEGb = EEG.data - baseline; % EEG data, with baseline correction applied
+    %% Baseline Correction (if specified)
+    if ~isempty(baselinesettings)
+        baselinePoints = dsearchn(times',baselinesettings(:)); % Find the baseline indices
+        baseline = mean(EEG.data(:,baselinePoints(1):baselinePoints(2) ,:),2);
+        EEGb = EEG.data - baseline; % EEG data, with baseline correction applied
+    else
+        EEGb = EEG.data;
+    end
     
     %% Epoching
     allMarkers = {EEG.epoch.eventtype}; % Markers within each epoch
@@ -177,7 +174,7 @@ for p = 1:numberofsubjects
         
         ERP.timepoints{c} = str2num(ERP.startTime{c}):1000/EEG.srate:str2num(ERP.endTime{c});
         ERP.data{c} = nan(EEG.nbchan,length(ERP.timepoints{c}));
-        erpPoints =  ([str2num(ERP.startTime{c}) str2num(ERP.endTime{c})]/1000 - EEG.xmin) * EEG.srate;
+        erpPoints = dsearchn(times', [str2num(ERP.startTime{c}) str2num(ERP.endTime{c})]');
         erpEEG = EEGb(:,erpPoints(1):erpPoints(2),:);
         
         % ERP Artifact Rejection TODO: Make this a function
@@ -210,7 +207,7 @@ for p = 1:numberofsubjects
         FFT.timepoints{c} = str2num(FFT.startTime{c}):1000/EEG.srate:str2num(FFT.endTime{c});
         FFT.frequencyResolution{c} = EEG.srate / length(FFT.timepoints{c});
         
-        fftPoints =  round(([str2num(FFT.startTime{c}) str2num(FFT.endTime{c})]/1000 - EEG.xmin) * EEG.srate);
+        fftPoints = dsearchn(times', [str2num(FFT.startTime{c}) str2num(FFT.endTime{c})]');
         fftEEG = EEGb(:,fftPoints(1):fftPoints(2),:);
         
         % ERP Artifact Rejection
@@ -262,8 +259,7 @@ for p = 1:numberofsubjects
         WAV.timepoints{c} = str2num(WAV.startTime{c}):1000/EEG.srate:str2num(WAV.endTime{c});
         WAV.frequencyResolution{c} = EEG.srate / length(WAV.timepoints{c});
         
-        
-        wavPoints =  ([str2num(WAV.startTime{c}) str2num(WAV.endTime{c})]/1000 - EEG.xmin) * EEG.srate;
+        wavPoints = dsearchn(times', [str2num(WAV.startTime{c}) str2num(WAV.endTime{c})]');
         wavEEG = EEGb(:,wavPoints(1):wavPoints(2),:);
         
         % ERP Artifact Rejection
@@ -315,7 +311,7 @@ for p = 1:numberofsubjects
         
     end
     %% Data Export
-    outfilename = [working_directory outfile subjectnumbers{p} '.mat'];
+    outfilename = [outfile subjectnumbers{p} '.mat'];
     save(outfilename,'version','srate','chanlocs','ERP','FFT');
 end
 
@@ -374,7 +370,7 @@ if ~isempty(DISC.FFTSum)
     title(lgd2,'FFT Artifacts');
 end
 
-% FFT Summary
+% WAV Summary
 if ~isempty(DISC.WAVSum)
     subplot(2,4,8);
     bar(DISC.WAVSum(:,3:4),'stacked');
@@ -384,7 +380,7 @@ if ~isempty(DISC.WAVSum)
     ylabel('Number of Epochs');
     title(lgd2,'WAV Artifacts');
 end
-toc
-% Use the commented-out code below to display results (condition 1, channel 1
+
+% Use the commented-out code below to display results (condition 1, channel 1)
 % plot(FFT.frequencies{1},FFT.data{1}(1,:));
 % contourf(WAV.timepoints{1}, WAV.frequencies{1}, squeeze(WAV.data{1}(1,:,:)),'linecolor','none');

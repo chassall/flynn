@@ -4,7 +4,10 @@ function [waveletData,waveletDataPercent,frex] = doWavelet(EEG,baseline_windows,
 %   October, 2017
 
 % get the data points for the baseline times (i.e., 1 50)
-baseidx = reshape(dsearchn(EEG.times',baseline_windows(:)), [],2);
+baseidx = [];
+if ~isempty(baseline_windows)
+    baseidx = reshape(dsearchn(EEG.times',baseline_windows(:)), [],2);
+end
 
 % setup wavelet parameters
 
@@ -78,24 +81,28 @@ for channelCounter = 1:size(EEG.data,1)
         tf(fi,:) = mean( abs(as).^2 ,2);
     end
     
-    % db conversion
-    
     % create new matrix for percent change
     tfpct = zeros(size(tf));
     
-    activity = tf(:,:);
-    
-    % create a baseline
-    %baseline = mean(tf(:,baseidx(1):baseidx(2)),2);
-    
-    % decibel
-    % somehow this converts it to decibels, remove activity that was
-    % constant over time, WHY?
-    %tf(:,:) = 10*log10( bsxfun(@rdivide, activity, baseline) );
-    
-    % percent change
-    %tfpct(:,:) = 100 * bsxfun(@rdivide, bsxfun(@minus,activity,baseline), baseline);
-    
+    % if a baseline was specified, apply it, and also compute percent
+    % change
+    if ~isempty(baseidx)
+        
+        activity = tf(:,:);
+        
+        % create a baseline
+        baseline = mean(tf(:,baseidx(1):baseidx(2)),2);
+        
+        % decibel
+        % somehow this converts it to decibels, remove activity that was
+        % constant over time, WHY?
+        tf(:,:) = 10*log10( bsxfun(@rdivide, activity, baseline) );
+        
+        % percent change
+        tfpct(:,:) = 100 * bsxfun(@rdivide, bsxfun(@minus,activity,baseline), baseline);
+    end
+
+    % assign output variables
     waveletData(channelCounter,:,:) = tf;
     waveletDataPercent(channelCounter,:,:) = tfpct;
     
