@@ -6,6 +6,9 @@ FLYNN 1.0 average eeg text file input, single .mat output
 
 Major/Minor Revision History
 
+3.1.1
+Removed audio, since it won't work in Westgrid anyway
+
 3.1.0
 FLYNN is now a function that takes the config file as argument
 WAV data now saved properly

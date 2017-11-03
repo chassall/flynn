@@ -1,5 +1,5 @@
 function FLYNN( pathToConfigFile )
-%FLYNN 3.1.0 Takes a config file pathname, then loads, organizes, and
+%FLYNN 3.1.1 Takes a config file pathname, then loads, organizes, and
 %analyzes EEG data.
 %
 % C. Hassall and O. Krigolson
@@ -11,16 +11,13 @@ function FLYNN( pathToConfigFile )
 % Requires: disc.wav, flynn.jpg, stats toolbox
 
 % FLYNN version number (major, minor, revision)
-version = '3.1.0';
+version = '3.1.1';
 
 % Load config file
 configFileId = fopen('FLYNNConfiguration.txt');
 C = textscan(configFileId, '%q','CommentStyle','%');
 fclose(configFileId);
 answer = C{1};
-
-[y,Fs] = audioread('disc.mp3');
-sound(y,Fs);
 
 % Parse ANSWER
 basefilename = answer{1};
