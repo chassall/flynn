@@ -1,12 +1,16 @@
-
-
 Version History
 
-FLYNN 1.0 average eeg text file input, single .mat output
-FLYNN 2.0 trial eeg text file input, multiple .mat output
 FLYNN 3.0 .mat input (EEGLAB format
+FLYNN 2.0 trial eeg text file input, multiple .mat output
+FLYNN 1.0 average eeg text file input, single .mat output
 
-FLYNN 3.0 Revision History
+Major/Minor Revision History
+
+3.1.0
+FLYNN is now a function that takes the config file as argument
+WAV data now saved properly
+doWav actually returns wavelet now
+Baseline subtraction now uses repmat to be compatible with older versions of Matlab
 
 3.0.1
 Removed working directory (users will just add it to the config file, line one)

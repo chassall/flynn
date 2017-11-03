@@ -1,8 +1,8 @@
-"./Sample Data/cognitive_assessment_" % File prefix (may include directory)
-"01,02,03" % File suffixes (participants)
+"C:\Users\chass\Documents\GitHub\flynn\Sample Data\cognitive_assessment_" % File prefix (should be full path)
+"01,02,03" % File suffixes (participant); Run num2str(1:20,'%02i,') or similar to make this easier
 "-200,0" % Baseline correction (use [] for no baseline)
 "10,100" % Artifact parameters (gradient, amplitude)
-"cognitive_assessment_flynn_" % Output file prefix (same suffixes as input)
+"cognitive_assessment_flynn_" % Output file prefix (same suffixes as input), may include directory
 "ERP,S110,-200,596,Win" % ERP analysis, marker, start time, end time, condition name
 "ERP,S111,-200,596,Lose"
 "ERP,S110,S111,-200,596,All" 

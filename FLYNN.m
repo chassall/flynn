@@ -1,15 +1,17 @@
-% FLYNN 3.0.1
-% C. Hassall and O. Krigolson
-% October, 2017
+function FLYNN( pathToConfigFile )
+%FLYNN 3.1.0 Takes a config file pathname, then loads, organizes, and
+%analyzes EEG data.
 %
-% FLYNN 1.0 average eeg text file input, single .mat output
-% FLYNN 2.0 trial eeg text file input, multiple .mat output
+% C. Hassall and O. Krigolson
+% November, 2017
+%
 % FLYNN 3.0 .mat input (EEGLAB format), multiple .mat output
-
+% FLYNN 2.0 trial eeg text file input, multiple .mat output
+% FLYNN 1.0 average eeg text file input, single .mat output
 % Requires: disc.wav, flynn.jpg, stats toolbox
 
 % FLYNN version number (major, minor, revision)
-version = '3.0.1';
+version = '3.1.0';
 
 % Load config file
 configFileId = fopen('FLYNNConfiguration.txt');
@@ -135,7 +137,7 @@ for p = 1:numberofsubjects
     if ~isempty(baselinesettings)
         baselinePoints = dsearchn(times',baselinesettings(:)); % Find the baseline indices
         baseline = mean(EEG.data(:,baselinePoints(1):baselinePoints(2) ,:),2);
-        EEGb = EEG.data - baseline; % EEG data, with baseline correction applied
+        EEGb = EEG.data - repmat(baseline,[1,EEG.pnts,1]); % EEG data, with baseline correction applied
     else
         EEGb = EEG.data;
     end
@@ -312,7 +314,7 @@ for p = 1:numberofsubjects
     end
     %% Data Export
     outfilename = [outfile subjectnumbers{p} '.mat'];
-    save(outfilename,'version','srate','chanlocs','ERP','FFT');
+    save(outfilename,'version','srate','chanlocs','ERP','FFT','WAV');
 end
 
 %% Visualization
@@ -379,6 +381,8 @@ if ~isempty(DISC.WAVSum)
     xlabel('Participant Number, Condition Number');
     ylabel('Number of Epochs');
     title(lgd2,'WAV Artifacts');
+end
+
 end
 
 % Use the commented-out code below to display results (condition 1, channel 1)
