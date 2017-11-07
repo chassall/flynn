@@ -1,5 +1,5 @@
 function FLYNN( pathToConfigFile )
-%FLYNN 3.1.3 Takes a config file pathname, then loads, organizes, and
+%FLYNN 3.1.4 Takes a config file pathname, then loads, organizes, and
 %analyzes EEG data.
 %
 % C. Hassall and O. Krigolson
@@ -11,7 +11,7 @@ function FLYNN( pathToConfigFile )
 % Requires: disc.wav, flynn.jpg, stats toolbox
 
 % FLYNN version number (major, minor, revision)
-version = '3.1.3';
+version = '3.1.4';
 
 % Load config file
 if nargin == 0
@@ -54,7 +54,7 @@ ALL.conditions = {};
 numAllConditions = 0;
 numAllMarkersByCondition = [];
 ALL.whichMarker = {};
-ALL.isRejected = {};
+ALL.isArtifact = {};
 
 % FFT variables
 FFT.markers = {};
@@ -213,12 +213,12 @@ for p = 1:numberofsubjects
         differenceViolations = squeeze(diffEEG > maxAllowedDifference);
         
         allViolations = sum(gradientViolation) + sum(differenceViolations);
-        isRejected = allViolations ~= 0;
+        isArtifact = allViolations ~= 0;
         
-        ERP.nAccepted{c} = sum(~isRejected & isThisCondition);
-        ERP.nRejected{c} = sum(isRejected & isThisCondition);
+        ERP.nAccepted{c} = sum(~isArtifact & isThisCondition);
+        ERP.nRejected{c} = sum(isArtifact & isThisCondition);
         
-        thisAverage = mean(erpEEG(:,:,~isRejected & isThisCondition),3);
+        thisAverage = mean(erpEEG(:,:,~isArtifact & isThisCondition),3);
         %         plot(thisAverage(34,:));
         %         hold on;
         ERP.data{c} = thisAverage;
@@ -258,14 +258,14 @@ for p = 1:numberofsubjects
         differenceViolations = squeeze(diffEEG > maxAllowedDifference);
         
         allViolations = sum(gradientViolation) + sum(differenceViolations);
-        isRejected = allViolations ~= 0;
+        isArtifact = allViolations ~= 0;
         
-        ALL.nAccepted{c} = sum(~isRejected & isAnyCondition);
-        ALL.nRejected{c} = sum(isRejected & isAnyCondition);
-        % ALL.data{c} = erpEEG(:,:,~isRejected & isThisCondition);
+        ALL.nAccepted{c} = sum(~isArtifact & isAnyCondition);
+        ALL.nRejected{c} = sum(isArtifact & isAnyCondition);
+        % ALL.data{c} = erpEEG(:,:,~isArtifact & isThisCondition);
         ALL.data{c} = allEEG(:,:,isAnyCondition);
         ALL.whichMarker{c} = isThisCondition(:,isAnyCondition); % Marker for each trial
-        ALL.isRejected{c} = isRejected;
+        ALL.isArtifact{c} = isArtifact;
         
         DISC.ALLSum = [DISC.ALLSum; str2num(subjectnumbers{p}) c ALL.nAccepted{c} ALL.nRejected{c}];
     end
@@ -290,7 +290,7 @@ for p = 1:numberofsubjects
         differenceViolations = squeeze(diffEEG > maxAllowedDifference);
         
         allViolations = sum(gradientViolation) + sum(differenceViolations);
-        isRejected = allViolations ~= 0;
+        isArtifact = allViolations ~= 0;
         
         % Contruct a boolean indicating if an epoch should be included
         isThisCondition = false(1,length(actualMarkers));
@@ -307,13 +307,13 @@ for p = 1:numberofsubjects
         
         % Store the number of good epochs for this condition and the
         % proportion rejected
-        FFT.nAccepted{c} = sum(~isRejected & isThisCondition);
-        FFT.nRejected{c} = sum(isRejected & isThisCondition);
+        FFT.nAccepted{c} = sum(~isArtifact & isThisCondition);
+        FFT.nRejected{c} = sum(isArtifact & isThisCondition);
         
         DISC.FFTSum = [DISC.FFTSum; str2num(subjectnumbers{p}) c FFT.nAccepted{c} FFT.nRejected{c}];
         
         % Prepare the EEG on which the FFT will be run
-        trimmedEEG.data = EEG.data(:,fftPoints(1):fftPoints(2),~isRejected & isThisCondition);
+        trimmedEEG.data = EEG.data(:,fftPoints(1):fftPoints(2),~isArtifact & isThisCondition);
         trimmedEEG.pnts = length(fftPoints(1):fftPoints(2));
         trimmedEEG.srate = EEG.srate;
         
@@ -342,7 +342,7 @@ for p = 1:numberofsubjects
         differenceViolations = squeeze(diffEEG > maxAllowedDifference);
         
         allViolations = sum(gradientViolation) + sum(differenceViolations);
-        isRejected = allViolations ~= 0;
+        isArtifact = allViolations ~= 0;
         
         % Contruct a boolean indicating if an epoch should be included
         isThisCondition = false(1,length(actualMarkers));
@@ -359,12 +359,12 @@ for p = 1:numberofsubjects
         
         % Store the number of good epochs for this condition and the
         % proportion rejected
-        WAV.nAccepted{c} = sum(~isRejected & isThisCondition);
-        WAV.nRejected{c} = sum(isRejected & isThisCondition);
+        WAV.nAccepted{c} = sum(~isArtifact & isThisCondition);
+        WAV.nRejected{c} = sum(isArtifact & isThisCondition);
         
         DISC.WAVSum = [DISC.WAVSum; str2num(subjectnumbers{p}) c WAV.nAccepted{c} WAV.nRejected{c}];
         
-        trimmedEEG.data = EEG.data(:,wavPoints(1):wavPoints(2),~isRejected & isThisCondition);
+        trimmedEEG.data = EEG.data(:,wavPoints(1):wavPoints(2),~isArtifact & isThisCondition);
         [~,~,trimmedEEG.trials] = size(trimmedEEG.data);
         trimmedEEG.times = WAV.timepoints{c};
         trimmedEEG.srate = EEG.srate;
