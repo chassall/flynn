@@ -6,6 +6,9 @@ FLYNN 1.0 average eeg text file input, single .mat output
 
 Major/Minor Revision History
 
+3.1.3
+Allow for case where user does not provide a path name (default to FLYNNConfiguration.txt)
+
 3.1.2
 Added ALL as an analysis type (all trials)
 
