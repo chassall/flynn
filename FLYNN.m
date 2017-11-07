@@ -11,7 +11,7 @@ function FLYNN( pathToConfigFile )
 % Requires: disc.wav, flynn.jpg, stats toolbox
 
 % FLYNN version number (major, minor, revision)
-version = '3.2.2';
+version = '3.1.2';
 
 % Load config file
 configFileId = fopen(pathToConfigFile);
