@@ -6,6 +6,12 @@ FLYNN 1.0 average eeg text file input, single .mat output
 
 Major/Minor Revision History
 
+3.2.1
+Added ALL as an analysis type (all trials)
+
+3.2.0
+FLYNN is now a function that takes a config file as argument
+
 3.1.1
 Removed audio, since it won't work in Westgrid anyway
 

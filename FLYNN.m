@@ -1,5 +1,5 @@
 function FLYNN( pathToConfigFile )
-%FLYNN 3.1.1 Takes a config file pathname, then loads, organizes, and
+%FLYNN 3.1.2 Takes a config file pathname, then loads, organizes, and
 %analyzes EEG data.
 %
 % C. Hassall and O. Krigolson
@@ -11,10 +11,10 @@ function FLYNN( pathToConfigFile )
 % Requires: disc.wav, flynn.jpg, stats toolbox
 
 % FLYNN version number (major, minor, revision)
-version = '3.1.1';
+version = '3.2.2';
 
 % Load config file
-configFileId = fopen('FLYNNConfiguration.txt');
+configFileId = fopen(pathToConfigFile);
 C = textscan(configFileId, '%q','CommentStyle','%');
 fclose(configFileId);
 answer = C{1};
@@ -41,6 +41,16 @@ ERP.endTime = [];
 ERP.conditions = {};
 numErpConditions = 0;
 numErpMarkersByCondition = [];
+
+% ALL variables
+ALL.markers = {};
+ALL.startTime = [];
+ALL.endTime = [];
+ALL.conditions = {};
+numAllConditions = 0;
+numAllMarkersByCondition = [];
+ALL.whichMarker = {};
+ALL.isRejected = {};
 
 % FFT variables
 FFT.markers = {};
@@ -77,6 +87,16 @@ for i = 1:length(answer)-5
         ERP.startTime{numErpConditions} = temp{2 + numMarkers};
         ERP.endTime{numErpConditions} = temp{3 + numMarkers};
         ERP.conditions{numErpConditions} = temp{4+numMarkers};
+    elseif strcmp(temp{1},'ALL')
+        numAllConditions = numAllConditions + 1;
+        numMarkers = length(temp) - 4;
+        numAllMarkersByCondition(numAllConditions) = numMarkers;
+        for k = 1:numMarkers
+            ALL.markers{k,numAllConditions} = temp{1+k};
+        end
+        ALL.startTime{numAllConditions} = temp{2 + numMarkers};
+        ALL.endTime{numAllConditions} = temp{3 + numMarkers};
+        ALL.conditions{numAllConditions} = temp{4+numMarkers};
     elseif strcmp(temp{1},'FFT')
         
         numFftConditions = numFftConditions + 1;
@@ -114,6 +134,7 @@ end
 
 % DISC will hold participant summaries
 DISC.EEGSum = []; % EEG Summary (participant, channels, datapoints)
+DISC.ALLSum = []; % ALL Summary (participant, channels, datapoints)
 DISC.ERPSum = []; % ERP Summary (participant, kept epochs, removed epochs)
 DISC.FFTSum = []; % FFT Summary (participant, kept epochs, removed epochs)
 DISC.WAVSum = []; % WAV Summary (participant, kept epochs, removed epochs)
@@ -200,7 +221,51 @@ for p = 1:numberofsubjects
         
         DISC.ERPSum = [DISC.ERPSum; str2num(subjectnumbers{p}) c ERP.nAccepted{c} ERP.nRejected{c}];
     end
-    
+
+    %% ALL Analysis (will store all trials of a certain type)
+    for c = 1:length(ALL.conditions)
+        
+        isThisCondition = false(numAllMarkersByCondition(c),length(actualMarkers));
+        % Make a logical vector so that all relevant markers are inccluded
+        for m = 1:numAllMarkersByCondition(c)
+            isThisCondition(m,:) = strcmp(actualMarkers,ALL.markers{m,c});
+        end
+        isAnyCondition = sum(isThisCondition) ~= 0;
+        
+        if sum(isAnyCondition) == 0
+            disp('No epochs found');
+            return;
+        end
+        
+        ALL.timepoints{c} = str2num(ALL.startTime{c}):1000/EEG.srate:str2num(ALL.endTime{c});
+        ALL.data{c} = nan(EEG.nbchan,length(ALL.timepoints{c}));
+        allPoints = dsearchn(times', [str2num(ALL.startTime{c}) str2num(ALL.endTime{c})]');
+        allEEG = EEGb(:,allPoints(1):allPoints(2),:);
+        
+        % ERP Artifact Rejection TODO: Make this a function
+        % Artifact Rejection - Gradient
+        maxAllowedStep = artifactsettings(1)*(1000/EEG.srate); % E.g. 10 uV/ms ~= 40 uV/4 ms... Equivalent to Analyzer?
+        gradient = allEEG(:,2:end,:) - allEEG(:,1:end-1,:);
+        gradientViolation = squeeze(any(gradient > maxAllowedStep,2));
+        
+        % Artifact Rejection - Difference
+        maxAllowedDifference = artifactsettings(2);
+        diffEEG = max(allEEG,[],2) - min(allEEG,[],2);
+        differenceViolations = squeeze(diffEEG > maxAllowedDifference);
+        
+        allViolations = sum(gradientViolation) + sum(differenceViolations);
+        isRejected = allViolations ~= 0;
+        
+        ALL.nAccepted{c} = sum(~isRejected & isAnyCondition);
+        ALL.nRejected{c} = sum(isRejected & isAnyCondition);
+        % ALL.data{c} = erpEEG(:,:,~isRejected & isThisCondition);
+        ALL.data{c} = allEEG(:,:,isAnyCondition);
+        ALL.whichMarker{c} = isThisCondition(:,isAnyCondition); % Marker for each trial
+        ALL.isRejected{c} = isRejected;
+        
+        DISC.ALLSum = [DISC.ALLSum; str2num(subjectnumbers{p}) c ALL.nAccepted{c} ALL.nRejected{c}];
+    end
+  
     %% FFT Analysis
     for c = 1:length(FFT.conditions)
         FFT.timepoints{c} = str2num(FFT.startTime{c}):1000/EEG.srate:str2num(FFT.endTime{c});
@@ -311,7 +376,7 @@ for p = 1:numberofsubjects
     end
     %% Data Export
     outfilename = [outfile subjectnumbers{p} '.mat'];
-    save(outfilename,'version','srate','chanlocs','ERP','FFT','WAV');
+    save(outfilename,'version','srate','chanlocs','ERP','ALL','FFT','WAV');
 end
 
 %% Visualization
@@ -346,15 +411,22 @@ xlabel('Participant Number');
 ylabel('Number of Channels');
 
 % ERP Summary
-if ~isempty(DISC.ERPSum)
+if ~isempty(DISC.ERPSum) || ~isempty(DISC.ALLSum)
     subplot(2,4,4);
-    bar(DISC.ERPSum(:,3:4),'stacked');
-    lgd1 = legend('Accepted','Rejected','Location', 'northoutside','Orientation','horizontal');
-    %xticklabels(num2str(DISC.ERPSum(:,1:2)));
-    %xlabel('Participant Number, Condition Number');
+    if ~isempty(DISC.ALLSum)
+        bar(DISC.ALLSum(:,3:4),'stacked');
+        lgd1 = legend('Accepted','Rejected','Location', 'northoutside','Orientation','horizontal');
+        xticklabels(num2str(DISC.ALLSum(:,1:2)));
+        title(lgd1,'ALL Artifacts');
+    else
+        bar(DISC.ERPSum(:,3:4),'stacked');   
+        lgd1 = legend('Accepted','Rejected','Location', 'northoutside','Orientation','horizontal');
+        xticklabels(num2str(DISC.ERPSum(:,1:2)));
+        title(lgd1,'ERP Artifacts');
+    end
+    xlabel('Participant Number, Condition Number');
     ylabel('Number of Epochs');
     %lgd = legend(strrep(conditionnames,'_',''),'Location', 'north','Orientation','horizontal');
-    title(lgd1,'ERP Artifacts');
     %ylim([0 max(max(DISC(:,:,3))) + 20]);
 end
 
