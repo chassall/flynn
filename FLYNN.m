@@ -1,5 +1,5 @@
 function FLYNN( pathToConfigFile )
-%FLYNN 3.1.4 Takes a config file pathname, then loads, organizes, and
+%FLYNN 3.1.5 Takes a config file pathname, then loads, organizes, and
 %analyzes EEG data.
 %
 % C. Hassall and O. Krigolson
@@ -11,7 +11,7 @@ function FLYNN( pathToConfigFile )
 % Requires: disc.wav, flynn.jpg, stats toolbox
 
 % FLYNN version number (major, minor, revision)
-version = '3.1.4';
+version = '3.1.5';
 
 % Load config file
 if nargin == 0
@@ -34,7 +34,7 @@ outfile = answer{5};
 % Determine which ERP/FFT/WVLT to do
 numAnalyses = length(answer)-5;
 if numAnalyses == 0
-    disp('No analysis specified');
+    disp('Error: No analysis specified');
     return;
 end
 
@@ -131,7 +131,7 @@ for i = 1:length(answer)-5
         WAV.rangeCycles{numWavConditions} = temp{9+numWavMarkers};
         WAV.conditions{numWavConditions} = temp{10+numWavMarkers};
     else
-        disp('Unknown analysis');
+        disp('Error: Unknown analysis');
         return;
     end
 end
@@ -143,17 +143,30 @@ DISC.ERPSum = []; % ERP Summary (participant, kept epochs, removed epochs)
 DISC.FFTSum = []; % FFT Summary (participant, kept epochs, removed epochs)
 DISC.WAVSum = []; % WAV Summary (participant, kept epochs, removed epochs)
 
+firstLocsFile = [];
+
 % Do analysis for each participant (ERP, FFT, WVLT)
 for p = 1:numberofsubjects
-    
-    %% Data Import
+    if isempty(subjectnumbers{p})
+        disp('Error: No participants present');
+        return;
+    end
+    % Data Import
     disp(['Current Subject Being Loaded: ' subjectnumbers{p}]);
     filename = [basefilename subjectnumbers{p} '.mat'];
     load(filename);
     chanlocs = EEG.chanlocs;
     srate = EEG.srate;
     times = EEG.xmin*1000:1000/EEG.srate:EEG.xmax*1000;
-    DISC.EEGSum = [DISC.EEGSum; str2num(subjectnumbers{p}) EEG.nbchan EEG.pnts];
+    thisParticipantNumber = str2num(cell2mat(regexp(subjectnumbers{p},'\d','match'))); % Remove non-digits first
+    if p == 1
+       firstLocsFile = chanlocs; 
+       DISC.EEGSum = [DISC.EEGSum; thisParticipantNumber EEG.nbchan EEG.pnts 1]; % First one is OK
+    elseif isequal(firstLocsFile,chanlocs)
+       DISC.EEGSum = [DISC.EEGSum; thisParticipantNumber EEG.nbchan EEG.pnts 1]; % Channel locs match
+    else
+       DISC.EEGSum = [DISC.EEGSum; thisParticipantNumber EEG.nbchan EEG.pnts 0]; % Channel locs don't match
+    end
     
     %% Baseline Correction (if specified)
     if ~isempty(baselinesettings)
@@ -176,7 +189,7 @@ for p = 1:numberofsubjects
         theseLatencies = cell2mat(latencies{m});
         [~, whichOne] = min(abs(theseLatencies - abs(EEG.xmin)*1000000)); % Find the latency (in nanoseconds?) closest to 0 ms
         if isempty(whichOne)
-            disp('Timing error in EEGLAB file');
+            disp('Error: Timing error in EEGLAB file');
             return;
         end
         actualMarkers{m} = thisSetOfMarkers{whichOne};
@@ -223,7 +236,7 @@ for p = 1:numberofsubjects
         %         hold on;
         ERP.data{c} = thisAverage;
         
-        DISC.ERPSum = [DISC.ERPSum; str2num(subjectnumbers{p}) c ERP.nAccepted{c} ERP.nRejected{c}];
+        DISC.ERPSum = [DISC.ERPSum; thisParticipantNumber c ERP.nAccepted{c} ERP.nRejected{c}];
     end
 
     %% ALL Analysis (will store all trials of a certain type)
@@ -237,7 +250,7 @@ for p = 1:numberofsubjects
         isAnyCondition = sum(isThisCondition) ~= 0;
         
         if sum(isAnyCondition) == 0
-            disp('No epochs found');
+            disp('Error: No epochs found');
             return;
         end
         
@@ -267,7 +280,7 @@ for p = 1:numberofsubjects
         ALL.whichMarker{c} = isThisCondition(:,isAnyCondition); % Marker for each trial
         ALL.isArtifact{c} = isArtifact;
         
-        DISC.ALLSum = [DISC.ALLSum; str2num(subjectnumbers{p}) c ALL.nAccepted{c} ALL.nRejected{c}];
+        DISC.ALLSum = [DISC.ALLSum; thisParticipantNumber c ALL.nAccepted{c} ALL.nRejected{c}];
     end
   
     %% FFT Analysis
@@ -301,7 +314,7 @@ for p = 1:numberofsubjects
         
         % Return if no epochs found
         if sum(isThisCondition) == 0
-            disp('No epochs found');
+            disp('Error: No epochs found');
             return;
         end
         
@@ -310,7 +323,7 @@ for p = 1:numberofsubjects
         FFT.nAccepted{c} = sum(~isArtifact & isThisCondition);
         FFT.nRejected{c} = sum(isArtifact & isThisCondition);
         
-        DISC.FFTSum = [DISC.FFTSum; str2num(subjectnumbers{p}) c FFT.nAccepted{c} FFT.nRejected{c}];
+        DISC.FFTSum = [DISC.FFTSum; thisParticipantNumber c FFT.nAccepted{c} FFT.nRejected{c}];
         
         % Prepare the EEG on which the FFT will be run
         trimmedEEG.data = EEG.data(:,fftPoints(1):fftPoints(2),~isArtifact & isThisCondition);
@@ -353,7 +366,7 @@ for p = 1:numberofsubjects
         
         % Return if no epochs found
         if sum(isThisCondition) == 0
-            disp('No epochs found');
+            disp('Error: No epochs found');
             return;
         end
         
@@ -362,7 +375,7 @@ for p = 1:numberofsubjects
         WAV.nAccepted{c} = sum(~isArtifact & isThisCondition);
         WAV.nRejected{c} = sum(isArtifact & isThisCondition);
         
-        DISC.WAVSum = [DISC.WAVSum; str2num(subjectnumbers{p}) c WAV.nAccepted{c} WAV.nRejected{c}];
+        DISC.WAVSum = [DISC.WAVSum; thisParticipantNumber c WAV.nAccepted{c} WAV.nRejected{c}];
         
         trimmedEEG.data = EEG.data(:,wavPoints(1):wavPoints(2),~isArtifact & isThisCondition);
         [~,~,trimmedEEG.trials] = size(trimmedEEG.data);
@@ -398,12 +411,14 @@ flynn = imread('flynn.jpg');
 subplot(2,4,[1 2 5 6]);
 imshow(flynn,'InitialMagnification',33);
 title(['\fontname{Courier}FLYNN ' version]);
-if range(DISC.EEGSum(:,2)) == 0
+if all(DISC.EEGSum(:,4))
     xlabel(['\fontname{Courier}' sprintf(['"' this_fq '" -Flynn'])]);
-    disp('All channels counts are consistent: GOOD DATA');
+    disp('CONSISTENT CHANNELS');
 else
-    xlabel('\fontname{Courier}USER ERROR!!! USER ERROR!!!');
-    disp('USER ERROR!!! USER ERROR!!!');
+    whichOnes = find(DISC.EEGSum(:,4) == 0);
+    xlabel(['\fontname{Courier}USER ERROR!!! ' strjoin(subjectnumbers(whichOnes),', ') ' inconsistent with ' subjectnumbers{1}]);
+    disp('USER ERROR!!! INCONSISTENT CHANNELS');
+    disp([strjoin(subjectnumbers(whichOnes),', ') ' inconsistent with ' subjectnumbers{1}]);
 end
 
 % EEG Summary
@@ -411,7 +426,8 @@ subplot(2,4,3);
 bar(DISC.EEGSum(:,2));
 % lgd = legend({},'Location', 'northoutside','Orientation','horizontal');
 title('Number of Channels');
-xlabel('Participant Number');
+xticklabels(num2str(DISC.EEGSum(:,1)));
+xlabel('Participant');
 ylabel('Number of Channels');
 
 % ERP Summary
@@ -428,7 +444,7 @@ if ~isempty(DISC.ERPSum) || ~isempty(DISC.ALLSum)
         xticklabels(num2str(DISC.ERPSum(:,1:2)));
         title(lgd1,'ERP Artifacts');
     end
-    xlabel('Participant Number, Condition Number');
+    xlabel('Participant, Condition');
     ylabel('Number of Epochs');
     %lgd = legend(strrep(conditionnames,'_',''),'Location', 'north','Orientation','horizontal');
     %ylim([0 max(max(DISC(:,:,3))) + 20]);
@@ -440,7 +456,7 @@ if ~isempty(DISC.FFTSum)
     bar(DISC.FFTSum(:,3:4),'stacked');
     lgd2 = legend('Accepted','Rejected','Location', 'northoutside','Orientation','horizontal');
     xticklabels(num2str(DISC.FFTSum(:,1:2)));
-    xlabel('Participant Number, Condition Number');
+    xlabel('Participant, Condition');
     ylabel('Number of Epochs');
     title(lgd2,'FFT Artifacts');
 end
@@ -451,7 +467,7 @@ if ~isempty(DISC.WAVSum)
     bar(DISC.WAVSum(:,3:4),'stacked');
     lgd2 = legend('Accepted','Rejected','Location', 'northoutside','Orientation','horizontal');
     xticklabels(num2str(DISC.WAVSum(:,1:2)));
-    xlabel('Participant Number, Condition Number');
+    xlabel('Participant, Condition');
     ylabel('Number of Epochs');
     title(lgd2,'WAV Artifacts');
 end

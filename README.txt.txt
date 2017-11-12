@@ -6,6 +6,12 @@ FLYNN 1.0 average eeg text file input, single .mat output
 
 Major/Minor Revision History
 
+3.1.5
+Compare chanlocs of first participant with subsequent participants. Add info to DISC. Display warnings if chanlocs inconsistent.
+
+3.1.4
+Changed isRejected to isArtifact for clarity.
+
 3.1.3
 Allow for case where user does not provide a path name (default to FLYNNConfiguration.txt)
 
