@@ -1,4 +1,4 @@
-function FLYNN( pathToConfigFile )
+function FLYNN( pathToConfigFile, pathToLocsFile )
 %FLYNN 3.1.5 Takes a config file pathname, then loads, organizes, and
 %analyzes EEG data.
 %
@@ -11,13 +11,17 @@ function FLYNN( pathToConfigFile )
 % Requires: disc.wav, flynn.jpg, stats toolbox
 
 % FLYNN version number (major, minor, revision)
-version = '3.1.5';
+version = '3.2.0';
 
 % Load config file
 if nargin == 0
     configFileId = fopen('FLYNNConfiguration.txt');
-else
+elseif nargin == 1
     configFileId = fopen(pathToConfigFile);
+    userLocsFile = [];
+elseif nargin == 2
+    configFileId = fopen(pathToConfigFile);
+    userLocsFile = readlocs(pathToLocsFile);
 end
 C = textscan(configFileId, '%q','CommentStyle','%');
 fclose(configFileId);
@@ -155,6 +159,29 @@ for p = 1:numberofsubjects
     disp(['Current Subject Being Loaded: ' subjectnumbers{p}]);
     filename = [basefilename subjectnumbers{p} '.mat'];
     load(filename);
+    
+    %% Attempt to sort data if there is a user-defined locs file
+    if ~isempty(userLocsFile)
+        newOrder = nan(1,length(EEG.chanlocs)); % New channel order
+        % Compare user channels to actual channels - if there is a match,
+        % record in which position it was found
+        for i = 1:length(userLocsFile)
+            for k = 1:length(EEG.chanlocs)
+                if strcmp(userLocsFile(i).labels,EEG.chanlocs(k).labels)
+                   newOrder(i) = k; 
+                end
+            end
+        end
+        % Error checking
+        if length(userLocsFile) ~= length(EEG.chanlocs) || any(isnan(newOrder))
+            disp('Error: Locs file mismatch');
+            return;
+        else
+           EEG.chanlocs = EEG.chanlocs(newOrder); % Reorder locs TODO: just use user-specified locs?
+           EEG.data = EEG.data(newOrder,:,:); % Reorder data
+        end
+    end
+    
     chanlocs = EEG.chanlocs;
     srate = EEG.srate;
     times = EEG.xmin*1000:1000/EEG.srate:EEG.xmax*1000;

@@ -6,6 +6,9 @@ FLYNN 1.0 average eeg text file input, single .mat output
 
 Major/Minor Revision History
 
+3.2.0
+FLYNN now takes as optional second argument a user-specified locs file. The variable chanlocs is compared to the user-specified locs file - chanlocs and data are reordered as needed.
+
 3.1.5
 Compare chanlocs of first participant with subsequent participants. Add info to DISC. Display warnings if chanlocs inconsistent.
 
