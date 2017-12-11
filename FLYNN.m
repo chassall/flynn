@@ -1,9 +1,9 @@
 function FLYNN( pathToConfigFile, pathToLocsFile )
-%FLYNN 3.1.5 Takes a config file pathname, then loads, organizes, and
+%FLYNN 3.2.0 Takes a config file pathname and a locations file pathname, then loads, organizes, and
 %analyzes EEG data.
 %
 % C. Hassall and O. Krigolson
-% November, 2017
+% December, 2017
 %
 % FLYNN 3.0 .mat input (EEGLAB format), multiple .mat output
 % FLYNN 2.0 trial eeg text file input, multiple .mat output
@@ -16,6 +16,7 @@ version = '3.2.0';
 % Load config file
 if nargin == 0
     configFileId = fopen('FLYNNConfiguration.txt');
+    userLocsFile = [];
 elseif nargin == 1
     configFileId = fopen(pathToConfigFile);
     userLocsFile = [];
