@@ -1,4 +1,4 @@
-function FLYNN( pathToConfigFile, pathToLocsFile )
+function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
 %FLYNN 3.2.0 Takes a config file pathname and a locations file pathname, then loads, organizes, and
 %analyzes EEG data.
 %
@@ -290,7 +290,7 @@ for p = 1:numberofsubjects
         % ERP Artifact Rejection TODO: Make this a function
         % Artifact Rejection - Gradient
         maxAllowedStep = artifactsettings(1)*(1000/EEG.srate); % E.g. 10 uV/ms ~= 40 uV/4 ms... Equivalent to Analyzer?
-        gradient = allEEG(:,2:end,:) - allEEG(:,1:end-1,:);
+        gradient = abs(allEEG(:,2:end,:) - allEEG(:,1:end-1,:));
         gradientViolation = squeeze(any(gradient > maxAllowedStep,2));
         
         % Artifact Rejection - Difference
@@ -322,7 +322,7 @@ for p = 1:numberofsubjects
         % ERP Artifact Rejection
         % Artifact Rejection - Gradient
         maxAllowedStep = artifactsettings(1)*(1000/EEG.srate); % E.g. 10 uV/ms ~= 40 uV/4 ms... Equivalent to Analyzer?
-        gradient = fftEEG(:,2:end,:) - fftEEG(:,1:end-1,:);
+        gradient = abs(fftEEG(:,2:end,:) - fftEEG(:,1:end-1,:));
         gradientViolation = squeeze(any(gradient > maxAllowedStep,2));
         
         % Artifact Rejection - Difference
@@ -374,7 +374,7 @@ for p = 1:numberofsubjects
         % ERP Artifact Rejection
         % Artifact Rejection - Gradient
         maxAllowedStep = artifactsettings(1)*(1000/EEG.srate); % E.g. 10 uV/ms ~= 40 uV/4 ms... Equivalent to Analyzer?
-        gradient = wavEEG(:,2:end,:) - wavEEG(:,1:end-1,:);
+        gradient = abs(wavEEG(:,2:end,:) - wavEEG(:,1:end-1,:));
         gradientViolation = squeeze(any(gradient > maxAllowedStep,2));
         
         % Artifact Rejection - Difference
