@@ -1,5 +1,5 @@
 function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
-%FLYNN 3.2.0 Takes a config file pathname and a locations file pathname, then loads, organizes, and
+%FLYNN 3.2.1 Takes a config file pathname and a locations file pathname, then loads, organizes, and
 %analyzes EEG data.
 %
 % C. Hassall and O. Krigolson
@@ -11,7 +11,7 @@ function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
 % Requires: disc.wav, flynn.jpg, stats toolbox
 
 % FLYNN version number (major, minor, revision)
-version = '3.2.0';
+version = '3.2.1';
 
 % Load config file
 if nargin == 0
