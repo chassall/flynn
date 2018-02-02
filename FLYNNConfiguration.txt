@@ -5,9 +5,9 @@
 "cognitive_assessment_flynn_" % Output file prefix (same suffixes as input), may include directory
 "ERP,S110,-200,596,Win" % ERP analysis, marker, start time, end time, condition name
 "ERP,S111,-200,596,Lose"
-"ERP,S110,S111,-200,596,All" 
-"FFT,S110,-500,1496,Win" % FFT analysis, marker, start time, end time, condition name
-"FFT,S111,-500,1496,Lose"
-"WAV,S110,-504,1496,[],[],1,30,59,6,Win" % WAV analysis, marker, start time, end time, baseline start ([] = none), baseline end ([] = none), start freq, end freq, steps, range cycles, condition name
-"WAV,S111,-504,1496,-300,-100,1,30,59,6,Lose"
-% "ALL,S110,S111,-200,596,Feedback" % Store all trials for a marker or markers, start, end, condition name
+%"ERP,S110,S111,-200,596,All" 
+%"FFT,S110,-500,1496,Win" % FFT analysis, marker, start time, end time, condition name
+%"FFT,S111,-500,1496,Lose"
+%"WAV,S110,-504,1496,[],[],1,30,59,6,Win" % WAV analysis, marker, start time, end time, baseline start ([] = none), baseline end ([] = none), start freq, end freq, steps, range cycles, condition name
+%"WAV,S111,-504,1496,-300,-100,1,30,59,6,Lose"
+%"ALL,S110,S111,-200,596,Feedback" % Store all trials for a marker or markers, start, end, condition name
