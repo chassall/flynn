@@ -1,5 +1,5 @@
 function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
-%FLYNN 3.2.1 Takes a config file pathname and a locations file pathname, then loads, organizes, and
+%FLYNN 3.2.2 Takes a config file pathname and a locations file pathname, then loads, organizes, and
 %analyzes EEG data.
 %
 % C. Hassall and O. Krigolson
@@ -11,7 +11,7 @@ function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
 % Requires: disc.wav, flynn.jpg, stats toolbox
 
 % FLYNN version number (major, minor, revision)
-version = '3.2.1';
+version = '3.2.2';
 
 % Load config file
 if nargin == 0
@@ -245,7 +245,7 @@ for p = 1:numberofsubjects
         % ERP Artifact Rejection TODO: Make this a function
         % Artifact Rejection - Gradient
         maxAllowedStep = artifactsettings(1)*(1000/EEG.srate); % E.g. 10 uV/ms ~= 40 uV/4 ms... Equivalent to Analyzer?
-        gradient = erpEEG(:,2:end,:) - erpEEG(:,1:end-1,:);
+        gradient = abs(erpEEG(:,2:end,:) - erpEEG(:,1:end-1,:));
         gradientViolation = squeeze(any(gradient > maxAllowedStep,2));
         
         % Artifact Rejection - Difference
@@ -253,7 +253,14 @@ for p = 1:numberofsubjects
         diffEEG = max(erpEEG,[],2) - min(erpEEG,[],2);
         differenceViolations = squeeze(diffEEG > maxAllowedDifference);
         
+        % Absolute
+%         minAllowed = -100;
+%         minAmplitudeViolations = squeeze(any(erpEEG < minAllowed,2));
+%         maxAllowed = 100;
+%         maxAmplitudeViolations = squeeze(any(erpEEG > maxAllowed,2));
+        
         allViolations = sum(gradientViolation) + sum(differenceViolations);
+        % allViolations = sum(gradientViolation) + sum(differenceViolations) + sum(minAmplitudeViolations) + sum(maxAmplitudeViolations);
         isArtifact = allViolations ~= 0;
         
         ERP.nAccepted{c} = sum(~isArtifact & isThisCondition);
