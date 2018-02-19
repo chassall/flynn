@@ -1,6 +1,6 @@
 function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
-%FLYNN 3.2.2 Takes a config file pathname and a locations file pathname, then loads, organizes, and
-%analyzes EEG data.
+%FLYNN 3.3.0 Takes a config file pathname and a locations file pathname, then loads, organizes, and
+%analyzes continuous or epoched EEG data.
 %
 % C. Hassall and O. Krigolson
 % December, 2017
@@ -11,7 +11,7 @@ function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
 % Requires: disc.wav, flynn.jpg, stats toolbox
 
 % FLYNN version number (major, minor, revision)
-version = '3.2.2';
+version = '3.3.0';
 
 % Load config file
 if nargin == 0
@@ -142,6 +142,7 @@ for i = 1:length(answer)-5
 end
 
 % DISC will hold participant summaries
+DISC.N = numberofsubjects;
 DISC.EEGSum = []; % EEG Summary (participant, channels, datapoints)
 DISC.ALLSum = []; % ALL Summary (participant, channels, datapoints)
 DISC.ERPSum = []; % ERP Summary (participant, kept epochs, removed epochs)
@@ -160,6 +161,13 @@ for p = 1:numberofsubjects
     disp(['Current Subject Being Loaded: ' subjectnumbers{p}]);
     filename = [basefilename subjectnumbers{p} '.mat'];
     load(filename);
+    
+    % Check to see if the data have been epoched (i.e. channels X samples
+    % X trials) or if the data are continuous
+    dataEpoched = 0;
+    if length(size(EEG.data)) == 3
+        dataEpoched = 1;
+    end
     
     %% Attempt to sort data if there is a user-defined locs file
     if ~isempty(userLocsFile)
@@ -197,30 +205,35 @@ for p = 1:numberofsubjects
     end
     
     %% Baseline Correction (if specified)
-    if ~isempty(baselinesettings)
-        baselinePoints = dsearchn(times',baselinesettings(:)); % Find the baseline indices
-        baseline = mean(EEG.data(:,baselinePoints(1):baselinePoints(2) ,:),2);
-        EEGb = EEG.data - repmat(baseline,[1,EEG.pnts,1]); % EEG data, with baseline correction applied
-    else
-        EEGb = EEG.data;
-    end
+%     if ~isempty(baselinesettings)
+%         baselinePoints = dsearchn(times',baselinesettings(:)); % Find the baseline indices
+%         baseline = mean(EEG.data(:,baselinePoints(1):baselinePoints(2) ,:),2);
+%         EEGb = EEG.data - repmat(baseline,[1,EEG.pnts,1]); % EEG data, with baseline correction applied
+%     else
+%         EEGb = EEG.data;
+%     end
     
     %% Epoching
-    allMarkers = {EEG.epoch.eventtype}; % Markers within each epoch
-    
-    % Problem: epochs contain multiple markers - to know which one is at 0 ms, we need to check latencies
-    
-    latencies = {EEG.epoch.eventlatency}; % Latencies of all events within each epoch
-    actualMarkers = {}; % Marker of interest for each epoch
-    for m = 1:length(allMarkers)
-        thisSetOfMarkers = allMarkers{m};
-        theseLatencies = cell2mat(latencies{m});
-        [~, whichOne] = min(abs(theseLatencies - abs(EEG.xmin)*1000000)); % Find the latency (in nanoseconds?) closest to 0 ms
-        if isempty(whichOne)
-            disp('Error: Timing error in EEGLAB file');
-            return;
+    if dataEpoched
+        allMarkers = {EEG.epoch.eventtype}; % Markers within each epoch
+        
+        % Problem: epochs contain multiple markers - to know which one is at 0 ms, we need to check latencies
+        latencies = {EEG.epoch.eventlatency}; % Latencies of all events within each epoch
+        actualMarkers = {}; % Marker of interest for each epoch
+        for m = 1:length(allMarkers)
+            thisSetOfMarkers = allMarkers{m};
+            theseLatencies = cell2mat(latencies{m});
+            [~, whichOne] = min(abs(theseLatencies - abs(EEG.xmin)*1000000)); % Find the latency (in nanoseconds?) closest to 0 ms
+            if isempty(whichOne)
+                disp('Error: Timing error in EEGLAB file');
+                return;
+            end
+            actualMarkers{m} = thisSetOfMarkers{whichOne};
         end
-        actualMarkers{m} = thisSetOfMarkers{whichOne};
+    else
+        allMarkers = {EEG.event.type};
+        latencies = cell2mat({EEG.event.latency}');
+        actualMarkers = allMarkers;
     end
     
     %% ERP Analysis
@@ -239,9 +252,25 @@ for p = 1:numberofsubjects
         
         ERP.timepoints{c} = str2num(ERP.startTime{c}):1000/EEG.srate:str2num(ERP.endTime{c});
         ERP.data{c} = nan(EEG.nbchan,length(ERP.timepoints{c}));
-        erpPoints = dsearchn(times', [str2num(ERP.startTime{c}) str2num(ERP.endTime{c})]');
-        erpEEG = EEGb(:,erpPoints(1):erpPoints(2),:);
+        if dataEpoched
+            erpPoints = dsearchn(times', [str2num(ERP.startTime{c}) str2num(ERP.endTime{c})]');
+            erpEEG = EEG.data(:,erpPoints(1):erpPoints(2),:);
+        else
+            theseLatencies = latencies(isThisCondition);
+            erpEEG = [];
+            for m = 1:length(theseLatencies)
+                erpPoints = dsearchn(times',theseLatencies(m)*1000/EEG.srate + [str2num(ERP.startTime{c}) str2num(ERP.endTime{c})]');
+                erpEEG(:,:,m) = EEG.data(:,erpPoints(1):erpPoints(2));
+            end
+        end
         
+        % Do baseline correction
+        if ~isempty(baselinesettings)
+            baselinePoints = dsearchn(ERP.timepoints{c}',baselinesettings(:)); % Find the baseline indices
+            baseline = mean(erpEEG(:,baselinePoints(1):baselinePoints(2) ,:),2);
+            erpEEG = erpEEG - repmat(baseline,[1,length(ERP.timepoints{c}),1]); % EEG data, with baseline correction applied
+        end
+    
         % ERP Artifact Rejection TODO: Make this a function
         % Artifact Rejection - Gradient
         maxAllowedStep = artifactsettings(1)*(1000/EEG.srate); % E.g. 10 uV/ms ~= 40 uV/4 ms... Equivalent to Analyzer?
@@ -253,20 +282,19 @@ for p = 1:numberofsubjects
         diffEEG = max(erpEEG,[],2) - min(erpEEG,[],2);
         differenceViolations = squeeze(diffEEG > maxAllowedDifference);
         
-        % Absolute
-%         minAllowed = -100;
-%         minAmplitudeViolations = squeeze(any(erpEEG < minAllowed,2));
-%         maxAllowed = 100;
-%         maxAmplitudeViolations = squeeze(any(erpEEG > maxAllowed,2));
-        
         allViolations = sum(gradientViolation) + sum(differenceViolations);
-        % allViolations = sum(gradientViolation) + sum(differenceViolations) + sum(minAmplitudeViolations) + sum(maxAmplitudeViolations);
         isArtifact = allViolations ~= 0;
         
-        ERP.nAccepted{c} = sum(~isArtifact & isThisCondition);
-        ERP.nRejected{c} = sum(isArtifact & isThisCondition);
+        if dataEpoched
+            ERP.nAccepted{c} = sum(~isArtifact & isThisCondition);
+            ERP.nRejected{c} = sum(isArtifact & isThisCondition);
+            thisAverage = mean(erpEEG(:,:,~isArtifact & isThisCondition),3);
+        else
+            ERP.nAccepted{c} = sum(~isArtifact);
+            ERP.nRejected{c} = sum(isArtifact);
+            thisAverage = mean(erpEEG(:,:,~isArtifact),3);
+        end
         
-        thisAverage = mean(erpEEG(:,:,~isArtifact & isThisCondition),3);
         %         plot(thisAverage(34,:));
         %         hold on;
         ERP.data{c} = thisAverage;
@@ -291,8 +319,25 @@ for p = 1:numberofsubjects
         
         ALL.timepoints{c} = str2num(ALL.startTime{c}):1000/EEG.srate:str2num(ALL.endTime{c});
         ALL.data{c} = nan(EEG.nbchan,length(ALL.timepoints{c}));
-        allPoints = dsearchn(times', [str2num(ALL.startTime{c}) str2num(ALL.endTime{c})]');
-        allEEG = EEGb(:,allPoints(1):allPoints(2),:);
+        
+        if dataEpoched
+            allPoints = dsearchn(times', [str2num(ALL.startTime{c}) str2num(ALL.endTime{c})]');
+            allEEG = EEG.data(:,allPoints(1):allPoints(2),:);
+        else
+            theseLatencies = latencies(isAnyCondition);
+            allEEG = [];
+            for m = 1:length(theseLatencies)
+                allPoints = dsearchn(times',theseLatencies(m)*1000/EEG.srate + [str2num(ALL.startTime{c}) str2num(ALL.endTime{c})]');
+                allEEG(:,:,m) = EEG.data(:,allPoints(1):allPoints(2));
+            end
+        end
+        
+        % Do baseline correction
+        if ~isempty(baselinesettings)
+            baselinePoints = dsearchn(ALL.timepoints{c}',baselinesettings(:)); % Find the baseline indices
+            baseline = mean(allEEG(:,baselinePoints(1):baselinePoints(2) ,:),2);
+            allEEG = allEEG - repmat(baseline,[1,length(ALL.timepoints{c}),1]); % EEG data, with baseline correction applied
+        end
         
         % ERP Artifact Rejection TODO: Make this a function
         % Artifact Rejection - Gradient
@@ -308,10 +353,16 @@ for p = 1:numberofsubjects
         allViolations = sum(gradientViolation) + sum(differenceViolations);
         isArtifact = allViolations ~= 0;
         
-        ALL.nAccepted{c} = sum(~isArtifact & isAnyCondition);
-        ALL.nRejected{c} = sum(isArtifact & isAnyCondition);
-        % ALL.data{c} = erpEEG(:,:,~isArtifact & isThisCondition);
-        ALL.data{c} = allEEG(:,:,isAnyCondition);
+        if dataEpoched
+            ALL.nAccepted{c} = sum(~isArtifact & isAnyCondition);
+            ALL.nRejected{c} = sum(isArtifact & isAnyCondition);
+            ALL.data{c} = allEEG(:,:,isAnyCondition);
+        else
+            ALL.nAccepted{c} = sum(~isArtifact);
+            ALL.nRejected{c} = sum(isArtifact);
+            ALL.data{c} = allEEG;
+        end
+        
         ALL.whichMarker{c} = isThisCondition(:,isAnyCondition); % Marker for each trial
         ALL.isArtifact{c} = isArtifact;
         
@@ -320,11 +371,35 @@ for p = 1:numberofsubjects
   
     %% FFT Analysis
     for c = 1:length(FFT.conditions)
+        
+        % Contruct a boolean indicating if an epoch should be included
+        isThisCondition = false(1,length(actualMarkers));
+        % Make a logical vector so that all relevant markers are inccluded
+        for m = 1:numFftMarkersByCondition(c)
+            isThisCondition = isThisCondition | strcmp(actualMarkers,FFT.markers{m,c});
+        end
+        
         FFT.timepoints{c} = str2num(FFT.startTime{c}):1000/EEG.srate:str2num(FFT.endTime{c});
         FFT.frequencyResolution{c} = EEG.srate / length(FFT.timepoints{c});
         
-        fftPoints = dsearchn(times', [str2num(FFT.startTime{c}) str2num(FFT.endTime{c})]');
-        fftEEG = EEGb(:,fftPoints(1):fftPoints(2),:);
+        if dataEpoched
+            fftPoints = dsearchn(times', [str2num(FFT.startTime{c}) str2num(FFT.endTime{c})]');
+            fftEEG = EEGb(:,fftPoints(1):fftPoints(2),:);
+        else
+            theseLatencies = latencies(isThisCondition);
+            fftEEG = [];
+            for m = 1:length(theseLatencies)
+                fftPoints = dsearchn(times',theseLatencies(m)*1000/EEG.srate + [str2num(FFT.startTime{c}) str2num(FFT.endTime{c})]');
+                fftEEG(:,:,m) = EEG.data(:,fftPoints(1):fftPoints(2));
+            end
+        end
+        
+        % Do baseline correction
+        if ~isempty(baselinesettings)
+            baselinePoints = dsearchn(FFT.timepoints{c}',baselinesettings(:)); % Find the baseline indices
+            baseline = mean(fftEEG(:,baselinePoints(1):baselinePoints(2) ,:),2);
+            fftEEG = fftEEG - repmat(baseline,[1,length(FFT.timepoints{c}),1]); % EEG data, with baseline correction applied
+        end
         
         % ERP Artifact Rejection
         % Artifact Rejection - Gradient
@@ -340,13 +415,6 @@ for p = 1:numberofsubjects
         allViolations = sum(gradientViolation) + sum(differenceViolations);
         isArtifact = allViolations ~= 0;
         
-        % Contruct a boolean indicating if an epoch should be included
-        isThisCondition = false(1,length(actualMarkers));
-        % Make a logical vector so that all relevant markers are inccluded
-        for m = 1:numFftMarkersByCondition(c)
-            isThisCondition = isThisCondition | strcmp(actualMarkers,FFT.markers{m,c});
-        end
-        
         % Return if no epochs found
         if sum(isThisCondition) == 0
             disp('Error: No epochs found');
@@ -355,30 +423,62 @@ for p = 1:numberofsubjects
         
         % Store the number of good epochs for this condition and the
         % proportion rejected
-        FFT.nAccepted{c} = sum(~isArtifact & isThisCondition);
-        FFT.nRejected{c} = sum(isArtifact & isThisCondition);
-        
-        DISC.FFTSum = [DISC.FFTSum; thisParticipantNumber c FFT.nAccepted{c} FFT.nRejected{c}];
-        
+        if dataEpoched
+            FFT.nAccepted{c} = sum(~isArtifact & isThisCondition);
+            FFT.nRejected{c} = sum(isArtifact & isThisCondition);
+            trimmedEEG.data = fftEEG(:,:,~isArtifact & isThisCondition);
+        else
+            FFT.nAccepted{c} = sum(~isArtifact);
+            FFT.nRejected{c} = sum(isArtifact);
+            trimmedEEG.data = fftEEG(:,:,~isArtifact);
+        end
         % Prepare the EEG on which the FFT will be run
-        trimmedEEG.data = EEG.data(:,fftPoints(1):fftPoints(2),~isArtifact & isThisCondition);
         trimmedEEG.pnts = length(fftPoints(1):fftPoints(2));
         trimmedEEG.srate = EEG.srate;
         
         % Call doFFT
         [FFT.data{c},FFT.frequencies{c}] = doFFT(trimmedEEG);
+        
+        DISC.FFTSum = [DISC.FFTSum; thisParticipantNumber c FFT.nAccepted{c} FFT.nRejected{c}];
     end
     
     %% Wavelet Analysis (TODO)
     for c = 1:length(WAV.conditions)
         
+        % Contruct a boolean indicating if an epoch should be included
+        isThisCondition = false(1,length(actualMarkers));
+        % Make a logical vector so that all relevant markers are inccluded
+        for m = 1:numFftMarkersByCondition(c)
+            isThisCondition = isThisCondition | strcmp(actualMarkers,WAV.markers{m,c});
+        end
+        % Return if no epochs found
+        if sum(isThisCondition) == 0
+            disp('Error: No epochs found');
+            return;
+        end
+        
         WAV.timepoints{c} = str2num(WAV.startTime{c}):1000/EEG.srate:str2num(WAV.endTime{c});
         WAV.frequencyResolution{c} = EEG.srate / length(WAV.timepoints{c});
         
-        wavPoints = dsearchn(times', [str2num(WAV.startTime{c}) str2num(WAV.endTime{c})]');
-        wavEEG = EEGb(:,wavPoints(1):wavPoints(2),:);
+        if dataEpoched
+            wavPoints = dsearchn(times', [str2num(WAV.startTime{c}) str2num(WAV.endTime{c})]');
+            wavEEG = EEGb(:,wavPoints(1):wavPoints(2),:);
+        else
+            theseLatencies = latencies(isThisCondition);
+            wavEEG = [];
+            for m = 1:length(theseLatencies)
+                wavPoints = dsearchn(times',theseLatencies(m)*1000/EEG.srate + [str2num(WAV.startTime{c}) str2num(WAV.endTime{c})]');
+                wavEEG(:,:,m) = EEG.data(:,wavPoints(1):wavPoints(2));
+            end
+        end
         
-        % ERP Artifact Rejection
+        % Do baseline correction
+        if ~isempty(baselinesettings)
+            baselinePoints = dsearchn(WAV.timepoints{c}',baselinesettings(:)); % Find the baseline indices
+            baseline = mean(wavEEG(:,baselinePoints(1):baselinePoints(2) ,:),2);
+            wavEEG = wavEEG - repmat(baseline,[1,length(WAV.timepoints{c}),1]); % EEG data, with baseline correction applied
+        end
+        
         % Artifact Rejection - Gradient
         maxAllowedStep = artifactsettings(1)*(1000/EEG.srate); % E.g. 10 uV/ms ~= 40 uV/4 ms... Equivalent to Analyzer?
         gradient = abs(wavEEG(:,2:end,:) - wavEEG(:,1:end-1,:));
@@ -392,39 +492,28 @@ for p = 1:numberofsubjects
         allViolations = sum(gradientViolation) + sum(differenceViolations);
         isArtifact = allViolations ~= 0;
         
-        % Contruct a boolean indicating if an epoch should be included
-        isThisCondition = false(1,length(actualMarkers));
-        % Make a logical vector so that all relevant markers are inccluded
-        for m = 1:numWavMarkersByCondition(c)
-            isThisCondition = isThisCondition | strcmp(actualMarkers,WAV.markers{m,c});
+        if dataEpoched
+            WAV.nAccepted{c} = sum(~isArtifact & isThisCondition);
+            WAV.nRejected{c} = sum(isArtifact & isThisCondition);
+            trimmedEEG.data = wavEEG(:,:,~isArtifact & isThisCondition);
+        else
+            WAV.nAccepted{c} = sum(~isArtifact);
+            WAV.nRejected{c} = sum(isArtifact);
+            trimmedEEG.data = wavEEG(:,:,~isArtifact);
         end
-        
-        % Return if no epochs found
-        if sum(isThisCondition) == 0
-            disp('Error: No epochs found');
-            return;
-        end
-        
-        % Store the number of good epochs for this condition and the
-        % proportion rejected
-        WAV.nAccepted{c} = sum(~isArtifact & isThisCondition);
-        WAV.nRejected{c} = sum(isArtifact & isThisCondition);
-        
-        DISC.WAVSum = [DISC.WAVSum; thisParticipantNumber c WAV.nAccepted{c} WAV.nRejected{c}];
-        
-        trimmedEEG.data = EEG.data(:,wavPoints(1):wavPoints(2),~isArtifact & isThisCondition);
         [~,~,trimmedEEG.trials] = size(trimmedEEG.data);
         trimmedEEG.times = WAV.timepoints{c};
         trimmedEEG.srate = EEG.srate;
         trimmedEEG.pnts =  length(wavPoints(1):wavPoints(2));
-        
+                
         baseline_windows = [str2num(WAV.baselineStart{c}) str2num(WAV.baselineEnd{c})];
         min_freq = str2num(WAV.frequencyStart{c});
         max_freq = str2num(WAV.frequencyEnd{c});
         num_frex = str2num(WAV.frequencySteps{c});
         range_cycles = str2num(WAV.rangeCycles{c});
         [WAV.data{c},WAV.dataPercent{c},WAV.frequencies{c}] = doWavelet(trimmedEEG,baseline_windows,min_freq,max_freq,num_frex,range_cycles);
-        
+                
+        DISC.WAVSum = [DISC.WAVSum; thisParticipantNumber c WAV.nAccepted{c} WAV.nRejected{c}];
     end
     %% Data Export
     outfilename = [outfile subjectnumbers{p} '.mat'];
@@ -469,12 +558,20 @@ ylabel('Number of Channels');
 if ~isempty(DISC.ERPSum) || ~isempty(DISC.ALLSum)
     subplot(2,4,4);
     if ~isempty(DISC.ALLSum)
-        bar(DISC.ALLSum(:,3:4),'stacked');
+        if DISC.N == 1
+            bar([DISC.ALLSum(:,3:4); 0 0],'stacked');
+        else
+            bar(DISC.ALLSum(:,3:4),'stacked');
+        end
         lgd1 = legend('Accepted','Rejected','Location', 'northoutside','Orientation','horizontal');
         xticklabels(num2str(DISC.ALLSum(:,1:2)));
         title(lgd1,'ALL Artifacts');
     else
-        bar(DISC.ERPSum(:,3:4),'stacked');   
+        if DISC.N == 1
+            bar([DISC.ERPSum(:,3:4); 0 0],'stacked');
+        else
+            bar(DISC.ERPSum(:,3:4),'stacked'); 
+        end
         lgd1 = legend('Accepted','Rejected','Location', 'northoutside','Orientation','horizontal');
         xticklabels(num2str(DISC.ERPSum(:,1:2)));
         title(lgd1,'ERP Artifacts');
@@ -488,7 +585,11 @@ end
 % FFT Summary
 if ~isempty(DISC.FFTSum)
     subplot(2,4,7);
-    bar(DISC.FFTSum(:,3:4),'stacked');
+    if DISC.N == 1
+        bar([DISC.FFTSum(:,3:4); 0 0],'stacked');
+    else
+        bar(DISC.FFTSum(:,3:4),'stacked');
+    end
     lgd2 = legend('Accepted','Rejected','Location', 'northoutside','Orientation','horizontal');
     xticklabels(num2str(DISC.FFTSum(:,1:2)));
     xlabel('Participant, Condition');
@@ -499,7 +600,11 @@ end
 % WAV Summary
 if ~isempty(DISC.WAVSum)
     subplot(2,4,8);
-    bar(DISC.WAVSum(:,3:4),'stacked');
+    if DISC.N == 1
+        bar([DISC.WAVSum(:,3:4); 0 0],'stacked');
+    else
+        bar(DISC.WAVSum(:,3:4),'stacked');
+    end
     lgd2 = legend('Accepted','Rejected','Location', 'northoutside','Orientation','horizontal');
     xticklabels(num2str(DISC.WAVSum(:,1:2)));
     xlabel('Participant, Condition');

@@ -6,8 +6,14 @@ FLYNN 1.0 average eeg text file input, single .mat output
 
 Major/Minor Revision History
 
+3.3.0
+FLYNN can now take continuous EEG data from Analyzer. Also fixed a bug where single participant summaries didn't display rejected trials properly.
+
+3.2.2
+Bug in artifact rejection (gradient criterion was only counting increases in voltage). 
+
 3.2.1
-Bug in artifact rejection (gradient criterion was only counting increases in voltage). Function now returns DISC.
+Function now returns DISC.
 
 3.2.0
 FLYNN now takes as optional second argument a user-specified locs file. The variable chanlocs is compared to the user-specified locs file - chanlocs and data are reordered as needed.
