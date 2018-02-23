@@ -1,5 +1,5 @@
 function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
-%FLYNN 3.3.0 Takes a config file pathname and a locations file pathname, then loads, organizes, and
+%FLYNN 3.3.1 Takes a config file pathname and a locations file pathname, then loads, organizes, and
 %analyzes continuous or epoched EEG data.
 %
 % C. Hassall and O. Krigolson
@@ -11,7 +11,7 @@ function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
 % Requires: disc.wav, flynn.jpg, stats toolbox
 
 % FLYNN version number (major, minor, revision)
-version = '3.3.0';
+version = '3.3.1';
 
 % Load config file
 if nargin == 0
@@ -310,7 +310,7 @@ for p = 1:numberofsubjects
         for m = 1:numAllMarkersByCondition(c)
             isThisCondition(m,:) = strcmp(actualMarkers,ALL.markers{m,c});
         end
-        isAnyCondition = sum(isThisCondition) ~= 0;
+        isAnyCondition = sum([isThisCondition; zeros(1,length(isThisCondition))]) ~= 0;
         
         if sum(isAnyCondition) == 0
             disp('Error: No epochs found');
@@ -318,7 +318,7 @@ for p = 1:numberofsubjects
         end
         
         ALL.timepoints{c} = str2num(ALL.startTime{c}):1000/EEG.srate:str2num(ALL.endTime{c});
-        ALL.data{c} = nan(EEG.nbchan,length(ALL.timepoints{c}));
+        %ALL.data{c} = nan(EEG.nbchan,length(ALL.timepoints{c}),);
         
         if dataEpoched
             allPoints = dsearchn(times', [str2num(ALL.startTime{c}) str2num(ALL.endTime{c})]');

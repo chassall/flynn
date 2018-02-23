@@ -6,6 +6,9 @@ FLYNN 1.0 average eeg text file input, single .mat output
 
 Major/Minor Revision History
 
+3.3.1
+Fixed a bug for ALL anlyses of only one marker type.
+
 3.3.0
 FLYNN can now take continuous EEG data from Analyzer. Also fixed a bug where single participant summaries didn't display rejected trials properly.
 
