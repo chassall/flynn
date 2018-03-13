@@ -6,6 +6,9 @@ FLYNN 1.0 average eeg text file input, single .mat output
 
 Major/Minor Revision History
 
+3.3.2
+Bug fix in FFT baseline.
+
 3.3.1
 Fixed a bug for ALL anlyses of only one marker type.
 
