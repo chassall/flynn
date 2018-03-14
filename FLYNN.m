@@ -1,5 +1,5 @@
 function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
-%FLYNN 3.3.2 Takes a config file pathname and a locations file pathname, then loads, organizes, and
+%FLYNN 3.3.3 Takes a config file pathname and a locations file pathname, then loads, organizes, and
 %analyzes continuous or epoched EEG data.
 %
 % C. Hassall and O. Krigolson
@@ -11,7 +11,7 @@ function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
 % Requires: disc.wav, flynn.jpg, stats toolbox
 
 % FLYNN version number (major, minor, revision)
-version = '3.3.2';
+version = '3.3.3';
 
 % Load config file
 if nargin == 0
@@ -311,60 +311,6 @@ for p = 1:numberofsubjects
             isThisCondition(m,:) = strcmp(actualMarkers,ALL.markers{m,c});
         end
         isAnyCondition = sum([isThisCondition; zeros(1,length(isThisCondition))]) ~= 0;
-        
-        % Check to make sure FB marker is preceeded by fixation cross (plus
-        % 3 other markers: stim, fix change, response)
-        fixationMarkers = {};
-        stimMarkers = {};
-        fixChangeMarker = {};
-        responseMarkers = {};
-        feedbackMarkers = {};
-        
-        for f = 1:20
-            fixationMarkers{f} = num2str(f,'S%3i');
-        end
-        
-        for s = 61:100
-            stimMarkers{s-60} = num2str(s,'S%3i');
-        end
-        
-        fixChangeMarker = {'S223'};
-        
-        for r = 101:140
-            responseMarkers{r-100} =  num2str(r,'S%3i');
-        end
-        
-        for fb = 141:220
-            feedbackMarkers{fb-140} = num2str(fb,'S%3i');
-        end
-        
-        
-        isFixation = false(20,length(actualMarkers));
-
-        for f = 1:9
-            thisMarker = num2str(f,'S  %i');
-            isFixation(f,:) = strcmp(actualMarkers,thisMarker);
-        end
-        for f = 10:20
-            thisMarker = num2str(f,'S %02i');
-            isFixation(f,:) = strcmp(actualMarkers,thisMarker);
-        end
-        isFixationMarker = sum(isFixation);
-        fixationMarkerLocations = find(isFixationMarker);
-        
-        
-        isStimulus = false(40,length(actualMarkers))
-        for 
-        
-        
-        for f = fixationMarkerLocations
-            actualMarkers{f:f+4}
-        end
-        isAnyCondition(5:end) = isAnyCondition(5:end) & isFixationMarker(1:end-4);
-        isAnyCondition(1:4) = 0;
-        disp([sum(isFixationMarker) sum(isAnyCondition)]);
-        
-        
         
         if sum(isAnyCondition) == 0
             disp('Error: No epochs found');
