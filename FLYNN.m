@@ -1,5 +1,5 @@
 function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
-%FLYNN 3.3.3 Takes a config file pathname and a locations file pathname, then loads, organizes, and
+%FLYNN 3.3.4 Takes a config file pathname and a locations file pathname, then loads, organizes, and
 %analyzes continuous or epoched EEG data.
 %
 % C. Hassall and O. Krigolson
@@ -11,7 +11,7 @@ function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
 % Requires: disc.wav, flynn.jpg, stats toolbox
 
 % FLYNN version number (major, minor, revision)
-version = '3.3.3';
+version = '3.3.4';
 
 % Load config file
 if nargin == 0
@@ -448,7 +448,7 @@ for p = 1:numberofsubjects
         % Contruct a boolean indicating if an epoch should be included
         isThisCondition = false(1,length(actualMarkers));
         % Make a logical vector so that all relevant markers are inccluded
-        for m = 1:numFftMarkersByCondition(c)
+        for m = 1:numWavMarkersByCondition(c)
             isThisCondition = isThisCondition | strcmp(actualMarkers,WAV.markers{m,c});
         end
         % Return if no epochs found
@@ -462,7 +462,7 @@ for p = 1:numberofsubjects
         
         if dataEpoched
             wavPoints = dsearchn(times', [str2num(WAV.startTime{c}) str2num(WAV.endTime{c})]');
-            wavEEG = EEGb(:,wavPoints(1):wavPoints(2),:);
+            wavEEG = EEG.data(:,wavPoints(1):wavPoints(2),:);
         else
             theseLatencies = latencies(isThisCondition);
             wavEEG = [];
