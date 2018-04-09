@@ -6,6 +6,9 @@ FLYNN 1.0 average eeg text file input, single .mat output
 
 Major/Minor Revision History
 
+3.3.5
+Artifact bug in ALL analysis when more than one ALL was specified.
+
 3.3.4
 Fixed two bugs in WAV code.
 

@@ -352,10 +352,11 @@ for p = 1:numberofsubjects
         
         allViolations = sum(gradientViolation) + sum(differenceViolations);
         isArtifact = allViolations ~= 0;
+        isArtifact = isArtifact(isAnyCondition);
         
         if dataEpoched
-            ALL.nAccepted{c} = sum(~isArtifact & isAnyCondition);
-            ALL.nRejected{c} = sum(isArtifact & isAnyCondition);
+            ALL.nAccepted{c} = sum(~isArtifact);
+            ALL.nRejected{c} = sum(isArtifact);
             ALL.data{c} = allEEG(:,:,isAnyCondition);
         else
             ALL.nAccepted{c} = sum(~isArtifact);
