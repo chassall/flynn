@@ -1,5 +1,5 @@
 function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
-%FLYNN 3.3.4 Takes a config file pathname and a locations file pathname, then loads, organizes, and
+%FLYNN 3.4.0 Takes a config file pathname and a locations file pathname, then loads, organizes, and
 %analyzes continuous or epoched EEG data.
 %
 % C. Hassall and O. Krigolson
@@ -11,22 +11,16 @@ function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
 % Requires: disc.wav, flynn.jpg, stats toolbox
 
 % FLYNN version number (major, minor, revision)
-version = '3.3.4';
+version = '3.4.0';
 
 % Load config file
-if nargin == 0
-    configFileId = fopen('FLYNNConfiguration.txt');
-    userLocsFile = [];
-elseif nargin == 1
-    configFileId = fopen(pathToConfigFile);
-    userLocsFile = [];
-elseif nargin == 2
-    configFileId = fopen(pathToConfigFile);
-    userLocsFile = readlocs(pathToLocsFile);
-end
+configFileId = fopen(pathToConfigFile);
 C = textscan(configFileId, '%q','CommentStyle','%');
 fclose(configFileId);
 answer = C{1};
+
+% Load locs file
+userLocsFile = readlocs(pathToLocsFile, 'filetype', 'locs');
 
 % Parse ANSWER
 basefilename = answer{1};
@@ -169,50 +163,31 @@ for p = 1:numberofsubjects
         dataEpoched = 1;
     end
     
-    %% Attempt to sort data if there is a user-defined locs file
-    if ~isempty(userLocsFile)
-        newOrder = nan(1,length(EEG.chanlocs)); % New channel order
-        % Compare user channels to actual channels - if there is a match,
-        % record in which position it was found
-        for i = 1:length(userLocsFile)
-            for k = 1:length(EEG.chanlocs)
-                if strcmp(userLocsFile(i).labels,EEG.chanlocs(k).labels)
-                   newOrder(i) = k; 
-                end
+    %% Sort the data
+    newOrder = nan(1,length(EEG.chanlocs)); % New channel order
+    % Compare user channels to actual channels - if there is a match,
+    % record in which position it was found
+    for i = 1:length(userLocsFile)
+        for k = 1:length(EEG.chanlocs)
+            if strcmp(userLocsFile(i).labels,EEG.chanlocs(k).labels)
+                newOrder(i) = k;
             end
         end
-        % Error checking
-        if length(userLocsFile) ~= length(EEG.chanlocs) || any(isnan(newOrder))
-            disp('Error: Locs file mismatch');
-            return;
-        else
-           EEG.chanlocs = EEG.chanlocs(newOrder); % Reorder locs TODO: just use user-specified locs?
-           EEG.data = EEG.data(newOrder,:,:); % Reorder data
-        end
+    end
+    % Error checking
+    if length(userLocsFile) ~= length(EEG.chanlocs) || any(isnan(newOrder))
+        disp('Error: Locs file mismatch');
+        return;
+    else
+        EEG.chanlocs = userLocsFile; % Use the user-defined locs file
+        EEG.data = EEG.data(newOrder,:,:); % Reorder data
     end
     
     chanlocs = EEG.chanlocs;
     srate = EEG.srate;
     times = EEG.xmin*1000:1000/EEG.srate:EEG.xmax*1000;
     thisParticipantNumber = str2num(cell2mat(regexp(subjectnumbers{p},'\d','match'))); % Remove non-digits first
-    if p == 1
-       firstLocsFile = chanlocs; 
-       DISC.EEGSum = [DISC.EEGSum; thisParticipantNumber EEG.nbchan EEG.pnts 1]; % First one is OK
-    elseif isequal(firstLocsFile,chanlocs)
-       DISC.EEGSum = [DISC.EEGSum; thisParticipantNumber EEG.nbchan EEG.pnts 1]; % Channel locs match
-    else
-       DISC.EEGSum = [DISC.EEGSum; thisParticipantNumber EEG.nbchan EEG.pnts 0]; % Channel locs don't match
-    end
-    
-    %% Baseline Correction (if specified)
-%     if ~isempty(baselinesettings)
-%         baselinePoints = dsearchn(times',baselinesettings(:)); % Find the baseline indices
-%         baseline = mean(EEG.data(:,baselinePoints(1):baselinePoints(2) ,:),2);
-%         EEGb = EEG.data - repmat(baseline,[1,EEG.pnts,1]); % EEG data, with baseline correction applied
-%     else
-%         EEGb = EEG.data;
-%     end
-    
+   
     %% Epoching
     if dataEpoched
         allMarkers = {EEG.epoch.eventtype}; % Markers within each epoch
@@ -270,7 +245,7 @@ for p = 1:numberofsubjects
             baseline = mean(erpEEG(:,baselinePoints(1):baselinePoints(2) ,:),2);
             erpEEG = erpEEG - repmat(baseline,[1,length(ERP.timepoints{c}),1]); % EEG data, with baseline correction applied
         end
-    
+        
         % ERP Artifact Rejection TODO: Make this a function
         % Artifact Rejection - Gradient
         maxAllowedStep = artifactsettings(1)*(1000/EEG.srate); % E.g. 10 uV/ms ~= 40 uV/4 ms... Equivalent to Analyzer?
@@ -301,7 +276,7 @@ for p = 1:numberofsubjects
         
         DISC.ERPSum = [DISC.ERPSum; thisParticipantNumber c ERP.nAccepted{c} ERP.nRejected{c}];
     end
-
+    
     %% ALL Analysis (will store all trials of a certain type)
     for c = 1:length(ALL.conditions)
         
@@ -369,7 +344,7 @@ for p = 1:numberofsubjects
         
         DISC.ALLSum = [DISC.ALLSum; thisParticipantNumber c ALL.nAccepted{c} ALL.nRejected{c}];
     end
-  
+    
     %% FFT Analysis
     for c = 1:length(FFT.conditions)
         
@@ -506,14 +481,14 @@ for p = 1:numberofsubjects
         trimmedEEG.times = WAV.timepoints{c};
         trimmedEEG.srate = EEG.srate;
         trimmedEEG.pnts =  length(wavPoints(1):wavPoints(2));
-                
+        
         baseline_windows = [str2num(WAV.baselineStart{c}) str2num(WAV.baselineEnd{c})];
         min_freq = str2num(WAV.frequencyStart{c});
         max_freq = str2num(WAV.frequencyEnd{c});
         num_frex = str2num(WAV.frequencySteps{c});
         range_cycles = str2num(WAV.rangeCycles{c});
         [WAV.data{c},WAV.dataPercent{c},WAV.frequencies{c}] = doWavelet(trimmedEEG,baseline_windows,min_freq,max_freq,num_frex,range_cycles);
-                
+        
         DISC.WAVSum = [DISC.WAVSum; thisParticipantNumber c WAV.nAccepted{c} WAV.nRejected{c}];
     end
     %% Data Export
@@ -524,7 +499,7 @@ end
 %% Visualization
 scrsz = get(groot,'ScreenSize');
 figure_loc = [1 scrsz(4)/2 scrsz(3)/1.5 scrsz(4)/2]; % This is where figures will be drawn
-%
+
 % Flynn quotations
 fquotes = {'On the other side of the screen, it all looks so easy.','How are you going to run the universe if you can''t answer a few unsolvable problems, huh?','Come on, you scuzzy data, be in there. Come on.','It''s time I leveled with you. I''m what you guys call a User.','I shouldn''t have written all of those tank programs.','It''s all in the wrists.','Greetings, programs!','Now for some real User power.','Did we make it? Hooray for our side.','Like the man says, there''s no problems, only solutions.','No sweat. I play video games better than anybody.','Come on, I''m - I''m scared of the dark. All this technology scares me.','Damn recognizer. Just go straight! I gotta get to that I/O tower.'};
 this_fq = fquotes{randi(length(fquotes))};
@@ -536,47 +511,19 @@ flynn = imread('flynn.jpg');
 subplot(2,4,[1 2 5 6]);
 imshow(flynn,'InitialMagnification',33);
 title(['\fontname{Courier}FLYNN ' version]);
-if all(DISC.EEGSum(:,4))
-    xlabel(['\fontname{Courier}' sprintf(['"' this_fq '" -Flynn'])]);
-    disp('CONSISTENT CHANNELS');
-else
-    whichOnes = find(DISC.EEGSum(:,4) == 0);
-    xlabel(['\fontname{Courier}USER ERROR!!! ' strjoin(subjectnumbers(whichOnes),', ') ' inconsistent with ' subjectnumbers{1}]);
-    disp('USER ERROR!!! INCONSISTENT CHANNELS');
-    disp([strjoin(subjectnumbers(whichOnes),', ') ' inconsistent with ' subjectnumbers{1}]);
-end
-
-% EEG Summary
-subplot(2,4,3);
-bar(DISC.EEGSum(:,2));
-% lgd = legend({},'Location', 'northoutside','Orientation','horizontal');
-title('Number of Channels');
-xticklabels(num2str(DISC.EEGSum(:,1)));
-xlabel('Participant');
-ylabel('Number of Channels');
+xlabel(['\fontname{Courier}' sprintf(['"' this_fq '" -Flynn'])]); 
 
 % ERP Summary
-if ~isempty(DISC.ERPSum) || ~isempty(DISC.ALLSum)
-    subplot(2,4,4);
-    if ~isempty(DISC.ALLSum)
-        if DISC.N == 1
-            bar([DISC.ALLSum(:,3:4); 0 0],'stacked');
-        else
-            bar(DISC.ALLSum(:,3:4),'stacked');
-        end
-        lgd1 = legend('Accepted','Rejected','Location', 'northoutside','Orientation','horizontal');
-        xticklabels(num2str(DISC.ALLSum(:,1:2)));
-        title(lgd1,'ALL Artifacts');
+if ~isempty(DISC.ERPSum)
+    subplot(2,4,3);
+    if DISC.N == 1
+        bar([DISC.ERPSum(:,3:4); 0 0],'stacked');
     else
-        if DISC.N == 1
-            bar([DISC.ERPSum(:,3:4); 0 0],'stacked');
-        else
-            bar(DISC.ERPSum(:,3:4),'stacked'); 
-        end
-        lgd1 = legend('Accepted','Rejected','Location', 'northoutside','Orientation','horizontal');
-        xticklabels(num2str(DISC.ERPSum(:,1:2)));
-        title(lgd1,'ERP Artifacts');
+        bar(DISC.ERPSum(:,3:4),'stacked');
     end
+    lgd1 = legend('Accepted','Rejected','Location', 'northoutside','Orientation','horizontal');
+    xticklabels(num2str(DISC.ERPSum(:,1:2)));
+    title(lgd1,'ERP Artifacts');
     xlabel('Participant, Condition');
     ylabel('Number of Epochs');
     %lgd = legend(strrep(conditionnames,'_',''),'Location', 'north','Orientation','horizontal');
@@ -585,7 +532,7 @@ end
 
 % FFT Summary
 if ~isempty(DISC.FFTSum)
-    subplot(2,4,7);
+    subplot(2,4,4);
     if DISC.N == 1
         bar([DISC.FFTSum(:,3:4); 0 0],'stacked');
     else
@@ -600,7 +547,7 @@ end
 
 % WAV Summary
 if ~isempty(DISC.WAVSum)
-    subplot(2,4,8);
+    subplot(2,4,7);
     if DISC.N == 1
         bar([DISC.WAVSum(:,3:4); 0 0],'stacked');
     else
@@ -611,6 +558,21 @@ if ~isempty(DISC.WAVSum)
     xlabel('Participant, Condition');
     ylabel('Number of Epochs');
     title(lgd2,'WAV Artifacts');
+end
+
+% ALL Summary
+if ~isempty(DISC.ALLSum)
+    subplot(2,4,8);
+    if DISC.N == 1
+        bar([DISC.ALLSum(:,3:4); 0 0],'stacked');
+    else
+        bar(DISC.ALLSum(:,3:4),'stacked');
+    end
+    lgd1 = legend('Accepted','Rejected','Location', 'northoutside','Orientation','horizontal');
+    xticklabels(num2str(DISC.ALLSum(:,1:2)));
+    title(lgd1,'ALL Artifacts');
+    xlabel('Participant, Condition');
+    ylabel('Number of Epochs');
 end
 
 end
