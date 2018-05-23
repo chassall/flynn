@@ -6,6 +6,9 @@ FLYNN 1.0 average eeg text file input, single .mat output
 
 Major/Minor Revision History
 
+3.4.1
+doFFT now returns power instead of amplitude. Additional comments added to doFFT.
+
 3.4.0
 Flynn now requires a user-defined electrode locations file. Removed code associated with not having a user-defined locs file.
 

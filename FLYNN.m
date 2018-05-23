@@ -9,9 +9,12 @@ function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
 % FLYNN 2.0 trial eeg text file input, multiple .mat output
 % FLYNN 1.0 average eeg text file input, single .mat output
 % Requires: disc.wav, flynn.jpg, stats toolbox
+%
+% Example
+% FLYNN('FLYNNConfiguration.txt','Standard-10-20-NEL-62.locs');
 
 % FLYNN version number (major, minor, revision)
-version = '3.4.0';
+version = '3.4.1';
 
 % Load config file
 configFileId = fopen(pathToConfigFile);
