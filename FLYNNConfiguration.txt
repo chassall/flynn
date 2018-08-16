@@ -1,6 +1,5 @@
 "./Sample Data/cognitive_assessment_" % File prefix (should be full path)
-%"01,02,03,04,05,06,07,08,09,10" % File suffixes (participant); Run num2str(1:20,'%02i,') or similar to make this easier
-"01"
+"01,02,03,04,05,06,07,08,09,10" % File suffixes (participant); Run num2str(1:20,'%02i,') or similar to make this easier
 "-200,0" % Baseline correction (use [] for no baseline)
 "10,100" % Artifact parameters (gradient, amplitude)
 "cognitive_assessment_flynn_" % Output file prefix (same suffixes as input), may include directory
