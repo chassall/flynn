@@ -1,5 +1,5 @@
 function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
-%FLYNN 3.4.0 Takes a config file pathname and a locations file pathname, then loads, organizes, and
+%FLYNN 3.4.2 Takes a config file pathname and a locations file pathname, then loads, organizes, and
 %analyzes continuous or epoched EEG data.
 %
 % C. Hassall and O. Krigolson
@@ -14,7 +14,7 @@ function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
 % FLYNN('FLYNNConfiguration.txt','Standard-10-20-NEL-62.locs');
 
 % FLYNN version number (major, minor, revision)
-version = '3.4.1';
+version = '3.4.2';
 
 % Load config file
 configFileId = fopen(pathToConfigFile);
@@ -238,7 +238,13 @@ for p = 1:numberofsubjects
             erpEEG = [];
             for m = 1:length(theseLatencies)
                 erpPoints = dsearchn(times',theseLatencies(m)*1000/EEG.srate + [str2num(ERP.startTime{c}) str2num(ERP.endTime{c})]');
-                erpEEG(:,:,m) = EEG.data(:,erpPoints(1):erpPoints(2));
+                
+                % Had to add this in case an epoch goes past the end of the
+                % recording
+                if erpPoints(2)-erpPoints(1)+1 == length(ERP.timepoints{c})
+                    erpEEG(:,:,m) = EEG.data(:,erpPoints(1):erpPoints(2));
+                end
+                
             end
         end
         
@@ -306,7 +312,13 @@ for p = 1:numberofsubjects
             allEEG = [];
             for m = 1:length(theseLatencies)
                 allPoints = dsearchn(times',theseLatencies(m)*1000/EEG.srate + [str2num(ALL.startTime{c}) str2num(ALL.endTime{c})]');
-                allEEG(:,:,m) = EEG.data(:,allPoints(1):allPoints(2));
+                
+                % Had to add this in case an epoch goes past the end of the
+                % recording
+                if allPoints(2)-allPoints(1)+1 == length(ALL.timepoints{c})
+                    allEEG(:,:,m) = EEG.data(:,allPoints(1):allPoints(2));
+                end
+                
             end
         end
         
@@ -330,7 +342,7 @@ for p = 1:numberofsubjects
         
         allViolations = sum(gradientViolation) + sum(differenceViolations);
         isArtifact = allViolations ~= 0;
-        isArtifact = isArtifact(isAnyCondition);
+        %isArtifact = isArtifact(isAnyCondition); % Still confused about this
         
         if dataEpoched
             ALL.nAccepted{c} = sum(~isArtifact);
@@ -369,7 +381,13 @@ for p = 1:numberofsubjects
             fftEEG = [];
             for m = 1:length(theseLatencies)
                 fftPoints = dsearchn(times',theseLatencies(m)*1000/EEG.srate + [str2num(FFT.startTime{c}) str2num(FFT.endTime{c})]');
-                fftEEG(:,:,m) = EEG.data(:,fftPoints(1):fftPoints(2));
+                
+                % Had to add this in case an epoch goes past the end of the
+                % recording
+                if fftPoints(2)-fftPoints(1) + 1 == length(FFT.timepoints{c})
+                    fftEEG(:,:,m) = FFT.data(:,fftPoints(1):fftPoints(2));
+                end
+                
             end
         end
         
@@ -447,7 +465,13 @@ for p = 1:numberofsubjects
             wavEEG = [];
             for m = 1:length(theseLatencies)
                 wavPoints = dsearchn(times',theseLatencies(m)*1000/EEG.srate + [str2num(WAV.startTime{c}) str2num(WAV.endTime{c})]');
-                wavEEG(:,:,m) = EEG.data(:,wavPoints(1):wavPoints(2));
+                
+                % Had to add this in case an epoch goes past the end of the
+                % recording
+                if wavPoints(2)-wavPoints(1) + 1 == length(WAV.timepoints{c})
+                    wavEEG(:,:,m) = EEG.data(:,wavPoints(1):wavPoints(2));
+                end
+                
             end
         end
         
@@ -483,7 +507,7 @@ for p = 1:numberofsubjects
         [~,~,trimmedEEG.trials] = size(trimmedEEG.data);
         trimmedEEG.times = WAV.timepoints{c};
         trimmedEEG.srate = EEG.srate;
-        trimmedEEG.pnts =  length(wavPoints(1):wavPoints(2));
+        trimmedEEG.pnts =  length(WAV.timepoints{c});
         
         baseline_windows = [str2num(WAV.baselineStart{c}) str2num(WAV.baselineEnd{c})];
         min_freq = str2num(WAV.frequencyStart{c});

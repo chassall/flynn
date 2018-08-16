@@ -6,6 +6,9 @@ FLYNN 1.0 average eeg text file input, single .mat output
 
 Major/Minor Revision History
 
+3.4.2
+Minor bug fixes
+
 3.4.1
 doFFT now returns power instead of amplitude. Additional comments added to doFFT.
 

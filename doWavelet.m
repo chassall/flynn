@@ -13,7 +13,8 @@ end
 
 % frequency parameters
 % the y-vector for plots showing the frequency range
-frex = linspace(min_freq,max_freq,num_frex);
+frex = linspace(min_freq,max_freq,num_frex); % Linear scale
+%frex = logspace(log10(min_freq),log10(max_freq),num_frex); % Log scale
 
 % used in creating the actual wavelet
 s = logspace(log10(range_cycles(1)),log10(range_cycles(end)),num_frex) ./ (2*pi*frex);
