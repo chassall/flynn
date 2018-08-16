@@ -6,6 +6,9 @@ FLYNN 1.0 average eeg text file input, single .mat output
 
 Major/Minor Revision History
 
+3.4.3
+Made the visualization a function; changed the way artifacts are displayed (as a 2D plot instead of a bar graph).
+
 3.4.2
 Minor bug fixes
 

@@ -11,10 +11,12 @@ function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
 % Requires: disc.wav, flynn.jpg, stats toolbox
 %
 % Example
-% FLYNN('FLYNNConfiguration.txt','Standard-10-20-NEL-62.locs');
+% myDISC = FLYNN('FLYNNConfiguration.txt','Standard-10-20-NEL-62.locs');
+% save('DISC.mat','myDISC');
+% plotdisc(myDISC);
 
 % FLYNN version number (major, minor, revision)
-version = '3.4.2';
+version = '3.4.3';
 
 % Load config file
 configFileId = fopen(pathToConfigFile);
@@ -139,6 +141,8 @@ for i = 1:length(answer)-5
 end
 
 % DISC will hold participant summaries
+DISC.version = version;
+DISC.participants = subjectnumbers;
 DISC.N = numberofsubjects;
 DISC.EEGSum = []; % EEG Summary (participant, channels, datapoints)
 DISC.ALLSum = []; % ALL Summary (participant, channels, datapoints)
@@ -524,83 +528,7 @@ for p = 1:numberofsubjects
 end
 
 %% Visualization
-scrsz = get(groot,'ScreenSize');
-figure_loc = [1 scrsz(4)/2 scrsz(3)/1.5 scrsz(4)/2]; % This is where figures will be drawn
-
-% Flynn quotations
-fquotes = {'On the other side of the screen, it all looks so easy.','How are you going to run the universe if you can''t answer a few unsolvable problems, huh?','Come on, you scuzzy data, be in there. Come on.','It''s time I leveled with you. I''m what you guys call a User.','I shouldn''t have written all of those tank programs.','It''s all in the wrists.','Greetings, programs!','Now for some real User power.','Did we make it? Hooray for our side.','Like the man says, there''s no problems, only solutions.','No sweat. I play video games better than anybody.','Come on, I''m - I''m scared of the dark. All this technology scares me.','Damn recognizer. Just go straight! I gotta get to that I/O tower.'};
-this_fq = fquotes{randi(length(fquotes))};
-
-fig = figure('Name',['FLYNN ' version],'NumberTitle','off','OuterPosition',figure_loc,'Toolbar','none','MenuBar','none');
-whitebg(fig,'k');
-set(gcf,'color','black');
-flynn = imread('flynn.jpg');
-subplot(2,4,[1 2 5 6]);
-imshow(flynn,'InitialMagnification',33);
-title(['\fontname{Courier}FLYNN ' version]);
-xlabel(['\fontname{Courier}' sprintf(['"' this_fq '" -Flynn'])]); 
-
-% ERP Summary
-if ~isempty(DISC.ERPSum)
-    subplot(2,4,3);
-    if DISC.N == 1
-        bar([DISC.ERPSum(:,3:4); 0 0],'stacked');
-    else
-        bar(DISC.ERPSum(:,3:4),'stacked');
-    end
-    lgd1 = legend('Accepted','Rejected','Location', 'northoutside','Orientation','horizontal');
-    xticklabels(num2str(DISC.ERPSum(:,1:2)));
-    title(lgd1,'ERP Artifacts');
-    xlabel('Participant, Condition');
-    ylabel('Number of Epochs');
-    %lgd = legend(strrep(conditionnames,'_',''),'Location', 'north','Orientation','horizontal');
-    %ylim([0 max(max(DISC(:,:,3))) + 20]);
-end
-
-% FFT Summary
-if ~isempty(DISC.FFTSum)
-    subplot(2,4,4);
-    if DISC.N == 1
-        bar([DISC.FFTSum(:,3:4); 0 0],'stacked');
-    else
-        bar(DISC.FFTSum(:,3:4),'stacked');
-    end
-    lgd2 = legend('Accepted','Rejected','Location', 'northoutside','Orientation','horizontal');
-    xticklabels(num2str(DISC.FFTSum(:,1:2)));
-    xlabel('Participant, Condition');
-    ylabel('Number of Epochs');
-    title(lgd2,'FFT Artifacts');
-end
-
-% WAV Summary
-if ~isempty(DISC.WAVSum)
-    subplot(2,4,7);
-    if DISC.N == 1
-        bar([DISC.WAVSum(:,3:4); 0 0],'stacked');
-    else
-        bar(DISC.WAVSum(:,3:4),'stacked');
-    end
-    lgd2 = legend('Accepted','Rejected','Location', 'northoutside','Orientation','horizontal');
-    xticklabels(num2str(DISC.WAVSum(:,1:2)));
-    xlabel('Participant, Condition');
-    ylabel('Number of Epochs');
-    title(lgd2,'WAV Artifacts');
-end
-
-% ALL Summary
-if ~isempty(DISC.ALLSum)
-    subplot(2,4,8);
-    if DISC.N == 1
-        bar([DISC.ALLSum(:,3:4); 0 0],'stacked');
-    else
-        bar(DISC.ALLSum(:,3:4),'stacked');
-    end
-    lgd1 = legend('Accepted','Rejected','Location', 'northoutside','Orientation','horizontal');
-    xticklabels(num2str(DISC.ALLSum(:,1:2)));
-    title(lgd1,'ALL Artifacts');
-    xlabel('Participant, Condition');
-    ylabel('Number of Epochs');
-end
+plotdisc(DISC);
 
 end
 
