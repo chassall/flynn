@@ -22,12 +22,13 @@ xlabel(['\fontname{Courier}' sprintf(['"' this_fq '" -Flynn'])]);
 % ERP Summary
 if ~isempty(DISC.ERPSum)
     subplot(2,4,3);
-    thisProportion = DISC.ERPSum(:,3)./(DISC.ERPSum(:,3) + DISC.ERPSum(:,4));
+    thisProportion = DISC.ERPSum(:,4)./(DISC.ERPSum(:,3) + DISC.ERPSum(:,4));
     thisProportion = reshape(thisProportion,max(DISC.ERPSum(:,2)),DISC.N)';
     imagesc(thisProportion,[0 1]);
     c = colorbar;
-    c.Label.String = 'Proportion Accepted';
-    xticklabels(num2str(DISC.ERPSum(:,2)));
+    c.Label.String = 'Proportion Rejected';
+    xticks(1:max(DISC.ERPSum(:,2)));
+    xticklabels(DISC.ERPConditions);
     yticks(1:length(DISC.participants));
     yticklabels(DISC.participants);
     title('ERP Artifacts');
@@ -38,12 +39,13 @@ end
 % FFT Summary
 if ~isempty(DISC.FFTSum)
     subplot(2,4,4);
-    thisProportion = DISC.FFTSum(:,3)./(DISC.FFTSum(:,3) + DISC.FFTSum(:,4));
+    thisProportion = DISC.FFTSum(:,4)./(DISC.FFTSum(:,3) + DISC.FFTSum(:,4));
     thisProportion = reshape(thisProportion,max(DISC.FFTSum(:,2)),DISC.N)';
     imagesc(thisProportion,[0 1]);
     c = colorbar;
-    c.Label.String = 'Proportion Accepted';
-    xticklabels(num2str(DISC.FFTSum(:,2)));
+    c.Label.String = 'Proportion Rejected';
+    xticks(1:max(DISC.FFTSum(:,2)));
+    xticklabels(DISC.FFTConditions);
     yticks(1:length(DISC.participants));
     yticklabels(DISC.participants);
     title('FFT Artifacts');
@@ -54,12 +56,13 @@ end
 % WAV Summary
 if ~isempty(DISC.WAVSum)
     subplot(2,4,7);
-    thisProportion = DISC.WAVSum(:,3)./(DISC.WAVSum(:,3) + DISC.WAVSum(:,4));
+    thisProportion = DISC.WAVSum(:,4)./(DISC.WAVSum(:,3) + DISC.WAVSum(:,4));
     thisProportion = reshape(thisProportion,max(DISC.WAVSum(:,2)),DISC.N)';
     imagesc(thisProportion,[0 1]);
     c = colorbar;
-    c.Label.String = 'Proportion Accepted';
-    xticklabels(num2str(DISC.WAVSum(:,2)));
+    c.Label.String = 'Proportion Rejected';
+    xticks(1:max(DISC.WAVSum(:,2)));
+    xticklabels(DISC.WAVConditions);
     yticks(1:length(DISC.participants));
     yticklabels(DISC.participants);
     title('WAV Artifacts');
@@ -70,18 +73,21 @@ end
 % ALL Summary
 if ~isempty(DISC.ALLSum)
     subplot(2,4,8);
-    thisProportion = DISC.ALLSum(:,3)./(DISC.ALLSum(:,3) + DISC.ALLSum(:,4));
+    thisProportion = DISC.ALLSum(:,4)./(DISC.ALLSum(:,3) + DISC.ALLSum(:,4));
     thisProportion = reshape(thisProportion,max(DISC.ALLSum(:,2)),DISC.N)';
     imagesc(thisProportion,[0 1]);
     c = colorbar;
-    c.Label.String = 'Proportion Accepted';
-    xticklabels(num2str(DISC.ALLSum(:,2)));
+    c.Label.String = 'Proportion Rejected';
+    xticks(1:max(DISC.ALLSum(:,2)));
+    xticklabels(DISC.ALLConditions);
     yticks(1:length(DISC.participants));
     yticklabels(DISC.participants);
     title('ALL Artifacts');
     xlabel('Condition');
     ylabel('Participant');
 end
+
+colormap('parula');
 
 end
 

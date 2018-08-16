@@ -1,5 +1,5 @@
 function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
-%FLYNN 3.4.2 Takes a config file pathname and a locations file pathname, then loads, organizes, and
+%FLYNN 3.4.4 Takes a config file pathname and a locations file pathname, then loads, organizes, and
 %analyzes continuous or epoched EEG data.
 %
 % C. Hassall and O. Krigolson
@@ -16,7 +16,7 @@ function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
 % plotdisc(myDISC);
 
 % FLYNN version number (major, minor, revision)
-version = '3.4.3';
+version = '3.4.4';
 
 % Load config file
 configFileId = fopen(pathToConfigFile);
@@ -526,6 +526,12 @@ for p = 1:numberofsubjects
     outfilename = [outfile subjectnumbers{p} '.mat'];
     save(outfilename,'version','srate','chanlocs','ERP','ALL','FFT','WAV');
 end
+
+% Store condition names in the DISC
+DISC.ALLConditions = ALL.conditions;
+DISC.ERPConditions = ERP.conditions;
+DISC.FFTConditions = FFT.conditions;
+DISC.WAVConditions = WAV.conditions;
 
 %% Visualization
 plotdisc(DISC);
