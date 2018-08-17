@@ -6,6 +6,9 @@ FLYNN 1.0 average eeg text file input, single .mat output
 
 Major/Minor Revision History
 
+3.4.6
+Further fixed the artifact vector for ALL analyses - was messing up on epoched versus continuous data.
+
 3.4.5
 Fixed the artifact vector for ALL analyses.
 
