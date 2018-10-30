@@ -1,5 +1,5 @@
 function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
-%FLYNN 3.4.6 Takes a config file pathname and a locations file pathname, then loads, organizes, and
+%FLYNN 3.4.7 Takes a config file pathname and a locations file pathname, then loads, organizes, and
 %analyzes continuous or epoched EEG data.
 %
 % C. Hassall and O. Krigolson
@@ -16,7 +16,7 @@ function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
 % plotdisc(myDISC);
 
 % FLYNN version number (major, minor, revision)
-version = '3.4.6';
+version = '3.4.7';
 
 % Load config file
 configFileId = fopen(pathToConfigFile);
@@ -389,7 +389,7 @@ for p = 1:numberofsubjects
                 % Had to add this in case an epoch goes past the end of the
                 % recording
                 if fftPoints(2)-fftPoints(1) + 1 == length(FFT.timepoints{c})
-                    fftEEG(:,:,m) = FFT.data(:,fftPoints(1):fftPoints(2));
+                    fftEEG(:,:,m) = EEG.data(:,fftPoints(1):fftPoints(2));
                 end
                 
             end
