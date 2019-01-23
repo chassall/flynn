@@ -1,5 +1,5 @@
 function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
-%FLYNN 3.4.8 Takes a config file pathname and a locations file pathname, then loads, organizes, and
+%FLYNN 3.5.0 Takes a config file pathname and a locations file pathname, then loads, organizes, and
 %analyzes continuous or epoched EEG data.
 %
 % C. Hassall and O. Krigolson
@@ -16,7 +16,7 @@ function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
 % plotdisc(myDISC);
 
 % FLYNN version number (major, minor, revision)
-version = '3.4.8';
+version = '3.5.0';
 
 % Load config file
 configFileId = fopen(pathToConfigFile);
@@ -26,6 +26,7 @@ answer = C{1};
 
 % Load locs file
 userLocsFile = readlocs(pathToLocsFile, 'filetype', 'locs');
+userLocsFile = rmfield(userLocsFile,{'sph_theta_besa','sph_phi_besa'});
 
 % Parse ANSWER
 basefilename = answer{1};
@@ -163,6 +164,12 @@ for p = 1:numberofsubjects
     filename = [basefilename subjectnumbers{p} '.mat'];
     load(filename);
     
+    % Add in some empty fields
+    EEG.icasphere = [];
+    EEG.icawinv = [];
+    EEG.icaweights = [];
+    EEG.icaact = [];
+    
     % Check to see if the data have been epoched (i.e. channels X samples
     % X trials) or if the data are continuous
     dataEpoched = 0;
@@ -170,27 +177,50 @@ for p = 1:numberofsubjects
         dataEpoched = 1;
     end
     
-    %% Sort the data
-    newOrder = nan(1,length(EEG.chanlocs)); % New channel order
-    % Compare user channels to actual channels - if there is a match,
-    % record in which position it was found
-    for i = 1:length(userLocsFile)
-        for k = 1:length(EEG.chanlocs)
-            if strcmp(userLocsFile(i).labels,EEG.chanlocs(k).labels)
-                newOrder(i) = k;
-            end
+    % Interpolate missing channels and reorder (based on code by Marco Simões)
+    % Check to see if there are any channels in the EEG file that are not
+    % in the locs file
+    if any(ismember({EEG.chanlocs.labels}, {userLocsFile.labels})  == 0)
+        disp('Warning: EEG contains channels that are missing from the user-specified locs file');
+        return;
+    end
+    missingIDs = [];
+    for i=1:length(userLocsFile)
+        if isempty(find(ismember({EEG.chanlocs.labels}, userLocsFile(i).labels) == 1, 1))
+            missingIDs = [missingIDs i];
         end
     end
-    % Error checking
-    if length(userLocsFile) ~= length(EEG.chanlocs) || any(isnan(newOrder))
-        disp('Error: Locs file mismatch');
-        return;
-    else
-        EEG.chanlocs = userLocsFile; % Use the user-defined locs file
-        EEG.data = EEG.data(newOrder,:,:); % Reorder data
+    interpolated{p} =  {userLocsFile(missingIDs).labels};
+    EEG = pop_interp(EEG, userLocsFile(missingIDs), 'spherical'); % Interpolate missing channels
+    newOrder = nan(1, length(userLocsFile));
+    for c=1:length(userLocsFile)
+        newOrder(c) = find(ismember({EEG.chanlocs.labels}, userLocsFile(c).labels) == 1, 1);
     end
+    EEG.data(:,:,:) = EEG.data(newOrder,:,:); % Reorder data (should word whether EEG.data is 2D or 3D)
+    EEG.chanlocs = EEG.chanlocs(newOrder);  % Reorder chanlocs
     
-    chanlocs = EEG.chanlocs;
+%     %% Sort the data
+%     newOrder = nan(1,length(EEG.chanlocs)); % New channel order
+%     % Compare user channels to actual channels - if there is a match,
+%     % record in which position it was found
+%     for i = 1:length(userLocsFile)
+%         for k = 1:length(EEG.chanlocs)
+%             if strcmp(userLocsFile(i).labels,EEG.chanlocs(k).labels)
+%                 newOrder(i) = k;
+%             end
+%         end
+%     end
+%     % Error checking
+%     if length(userLocsFile) ~= length(EEG.chanlocs) || any(isnan(newOrder))
+%         disp('Error: Locs file mismatch');
+%         return;
+%     else
+%         EEG.chanlocs = userLocsFile; % Use the user-defined locs file
+%         EEG.data = EEG.data(newOrder,:,:); % Reorder data
+%     end
+    
+    % chanlocs = EEG.chanlocs; % This may lead to slightly different locs parameters due to interpolation
+    chanlocs = userLocsFile;
     srate = EEG.srate;
     times = EEG.xmin*1000:1000/EEG.srate:EEG.xmax*1000;
     thisParticipantNumber = str2num(cell2mat(regexp(subjectnumbers{p},'\d','match'))); % Remove non-digits first
@@ -538,6 +568,9 @@ DISC.ALLConditions = ALL.conditions;
 DISC.ERPConditions = ERP.conditions;
 DISC.FFTConditions = FFT.conditions;
 DISC.WAVConditions = WAV.conditions;
+
+% Record interpolated channel names
+DISC.interpolated = interpolated;
 
 %% Visualization
 plotdisc(DISC);

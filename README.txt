@@ -6,6 +6,9 @@ FLYNN 1.0 average eeg text file input, single .mat output
 
 Major/Minor Revision History
 
+3.5.0
+FLYNN now interpolates missing channels and reorders them to match the user-specified locs file.
+
 3.4.8
 Fixed bug where program crashed if there was only one instance of a marker. Added commmented out code that does a moving window for artifact rejection.
 
