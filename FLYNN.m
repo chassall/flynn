@@ -1,5 +1,5 @@
 function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
-%FLYNN 3.4.7 Takes a config file pathname and a locations file pathname, then loads, organizes, and
+%FLYNN 3.4.8 Takes a config file pathname and a locations file pathname, then loads, organizes, and
 %analyzes continuous or epoched EEG data.
 %
 % C. Hassall and O. Krigolson
@@ -16,7 +16,7 @@ function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
 % plotdisc(myDISC);
 
 % FLYNN version number (major, minor, revision)
-version = '3.4.7';
+version = '3.4.8';
 
 % Load config file
 configFileId = fopen(pathToConfigFile);
@@ -204,13 +204,17 @@ for p = 1:numberofsubjects
         actualMarkers = {}; % Marker of interest for each epoch
         for m = 1:length(allMarkers)
             thisSetOfMarkers = allMarkers{m};
-            theseLatencies = cell2mat(latencies{m});
-            [~, whichOne] = min(abs(theseLatencies - abs(EEG.xmin)*1000000)); % Find the latency (in nanoseconds?) closest to 0 ms
-            if isempty(whichOne)
-                disp('Error: Timing error in EEGLAB file');
-                return;
+            if ~iscell(thisSetOfMarkers) % NEW November 27 - need this in case there is only one marker in epoch
+                actualMarkers{m} = thisSetOfMarkers;
+            else
+                theseLatencies = cell2mat(latencies{m});
+                [~, whichOne] = min(abs(theseLatencies - abs(EEG.xmin)*1000000)); % Find the latency (in nanoseconds?) closest to 0 ms
+                if isempty(whichOne)
+                    disp('Error: Timing error in EEGLAB file');
+                    return;
+                end
+                actualMarkers{m} = thisSetOfMarkers{whichOne};
             end
-            actualMarkers{m} = thisSetOfMarkers{whichOne};
         end
     else
         allMarkers = {EEG.event.type};
@@ -412,6 +416,8 @@ for p = 1:numberofsubjects
         maxAllowedDifference = artifactsettings(2);
         diffEEG = max(fftEEG,[],2) - min(fftEEG,[],2);
         differenceViolations = squeeze(diffEEG > maxAllowedDifference);
+%         diffEEG = movmax(fftEEG,800/(1000/EEG.srate),2,'Endpoints','discard') - movmin(fftEEG,800/(1000/EEG.srate),2,'Endpoints','discard'); % e.g., 800 ms moving window
+%         differenceViolations = squeeze(any(diffEEG > maxAllowedDifference,2));
         
         allViolations = sum(gradientViolation) + sum(differenceViolations);
         isArtifact = allViolations ~= 0;
