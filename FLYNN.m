@@ -1,5 +1,5 @@
 function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
-%FLYNN 3.5.0 Takes a config file pathname and a locations file pathname, then loads, organizes, and
+%FLYNN 3.5.1 Takes a config file pathname and a locations file pathname, then loads, organizes, and
 %analyzes continuous or epoched EEG data.
 %
 % C. Hassall and O. Krigolson
@@ -16,7 +16,7 @@ function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
 % plotdisc(myDISC);
 
 % FLYNN version number (major, minor, revision)
-version = '3.5.0';
+version = '3.5.1';
 
 % Load config file
 configFileId = fopen(pathToConfigFile);
@@ -191,7 +191,9 @@ for p = 1:numberofsubjects
         end
     end
     interpolated{p} =  {userLocsFile(missingIDs).labels};
-    EEG = pop_interp(EEG, userLocsFile(missingIDs), 'spherical'); % Interpolate missing channels
+    if ~isempty(missingIDs)
+        EEG = pop_interp(EEG, userLocsFile(missingIDs), 'spherical'); % Interpolate missing channels
+    end
     newOrder = nan(1, length(userLocsFile));
     for c=1:length(userLocsFile)
         newOrder(c) = find(ismember({EEG.chanlocs.labels}, userLocsFile(c).labels) == 1, 1);
@@ -199,32 +201,32 @@ for p = 1:numberofsubjects
     EEG.data(:,:,:) = EEG.data(newOrder,:,:); % Reorder data (should word whether EEG.data is 2D or 3D)
     EEG.chanlocs = EEG.chanlocs(newOrder);  % Reorder chanlocs
     
-%     %% Sort the data
-%     newOrder = nan(1,length(EEG.chanlocs)); % New channel order
-%     % Compare user channels to actual channels - if there is a match,
-%     % record in which position it was found
-%     for i = 1:length(userLocsFile)
-%         for k = 1:length(EEG.chanlocs)
-%             if strcmp(userLocsFile(i).labels,EEG.chanlocs(k).labels)
-%                 newOrder(i) = k;
-%             end
-%         end
-%     end
-%     % Error checking
-%     if length(userLocsFile) ~= length(EEG.chanlocs) || any(isnan(newOrder))
-%         disp('Error: Locs file mismatch');
-%         return;
-%     else
-%         EEG.chanlocs = userLocsFile; % Use the user-defined locs file
-%         EEG.data = EEG.data(newOrder,:,:); % Reorder data
-%     end
+    %     %% Sort the data
+    %     newOrder = nan(1,length(EEG.chanlocs)); % New channel order
+    %     % Compare user channels to actual channels - if there is a match,
+    %     % record in which position it was found
+    %     for i = 1:length(userLocsFile)
+    %         for k = 1:length(EEG.chanlocs)
+    %             if strcmp(userLocsFile(i).labels,EEG.chanlocs(k).labels)
+    %                 newOrder(i) = k;
+    %             end
+    %         end
+    %     end
+    %     % Error checking
+    %     if length(userLocsFile) ~= length(EEG.chanlocs) || any(isnan(newOrder))
+    %         disp('Error: Locs file mismatch');
+    %         return;
+    %     else
+    %         EEG.chanlocs = userLocsFile; % Use the user-defined locs file
+    %         EEG.data = EEG.data(newOrder,:,:); % Reorder data
+    %     end
     
     % chanlocs = EEG.chanlocs; % This may lead to slightly different locs parameters due to interpolation
     chanlocs = userLocsFile;
     srate = EEG.srate;
     times = EEG.xmin*1000:1000/EEG.srate:EEG.xmax*1000;
     thisParticipantNumber = str2num(cell2mat(regexp(subjectnumbers{p},'\d','match'))); % Remove non-digits first
-   
+    
     %% Epoching
     if dataEpoched
         allMarkers = {EEG.epoch.eventtype}; % Markers within each epoch
@@ -263,63 +265,68 @@ for p = 1:numberofsubjects
         
         if sum(isThisCondition) == 0
             disp('No epochs found');
-            return;
-        end
-        
-        ERP.timepoints{c} = str2num(ERP.startTime{c}):1000/EEG.srate:str2num(ERP.endTime{c});
-        ERP.data{c} = nan(EEG.nbchan,length(ERP.timepoints{c}));
-        if dataEpoched
-            erpPoints = dsearchn(times', [str2num(ERP.startTime{c}) str2num(ERP.endTime{c})]');
-            erpEEG = EEG.data(:,erpPoints(1):erpPoints(2),:);
+            ERP.timepoints{c} = [];
+            ERP.data{c} = [];
+            ERP.nAccepted{c} = NaN;
+            ERP.nRejected{c} = NaN;
         else
-            theseLatencies = latencies(isThisCondition);
-            erpEEG = [];
-            for m = 1:length(theseLatencies)
-                erpPoints = dsearchn(times',theseLatencies(m)*1000/EEG.srate + [str2num(ERP.startTime{c}) str2num(ERP.endTime{c})]');
-                
-                % Had to add this in case an epoch goes past the end of the
-                % recording
-                if erpPoints(2)-erpPoints(1)+1 == length(ERP.timepoints{c})
-                    erpEEG(:,:,m) = EEG.data(:,erpPoints(1):erpPoints(2));
+            
+            ERP.timepoints{c} = str2num(ERP.startTime{c}):1000/EEG.srate:str2num(ERP.endTime{c});
+            ERP.data{c} = nan(EEG.nbchan,length(ERP.timepoints{c}));
+            if dataEpoched
+                erpPoints = dsearchn(times', [str2num(ERP.startTime{c}) str2num(ERP.endTime{c})]');
+                erpEEG = EEG.data(:,erpPoints(1):erpPoints(2),:);
+            else
+                theseLatencies = latencies(isThisCondition);
+                erpEEG = [];
+                for m = 1:length(theseLatencies)
+                    erpPoints = dsearchn(times',theseLatencies(m)*1000/EEG.srate + [str2num(ERP.startTime{c}) str2num(ERP.endTime{c})]');
+                    
+                    % Had to add this in case an epoch goes past the end of the
+                    % recording
+                    if erpPoints(2)-erpPoints(1)+1 == length(ERP.timepoints{c})
+                        erpEEG(:,:,m) = EEG.data(:,erpPoints(1):erpPoints(2));
+                    end
+                    
                 end
-                
             end
+            
+            % Do baseline correction
+            if ~isempty(baselinesettings)
+                baselinePoints = dsearchn(ERP.timepoints{c}',baselinesettings(:)); % Find the baseline indices
+                baseline = mean(erpEEG(:,baselinePoints(1):baselinePoints(2) ,:),2);
+                erpEEG = erpEEG - repmat(baseline,[1,length(ERP.timepoints{c}),1]); % EEG data, with baseline correction applied
+            end
+            
+            % ERP Artifact Rejection TODO: Make this a function
+            % Artifact Rejection - Gradient
+            maxAllowedStep = artifactsettings(1)*(1000/EEG.srate); % E.g. 10 uV/ms ~= 40 uV/4 ms... Equivalent to Analyzer?
+            gradient = abs(erpEEG(:,2:end,:) - erpEEG(:,1:end-1,:));
+            gradientViolation = squeeze(any(gradient > maxAllowedStep,2));
+            
+            % Artifact Rejection - Difference
+            maxAllowedDifference = artifactsettings(2);
+            diffEEG = max(erpEEG,[],2) - min(erpEEG,[],2);
+            differenceViolations = squeeze(diffEEG > maxAllowedDifference);
+            
+            allViolations = sum(gradientViolation) + sum(differenceViolations);
+            isArtifact = allViolations ~= 0;
+            
+            if dataEpoched
+                ERP.nAccepted{c} = sum(~isArtifact & isThisCondition);
+                ERP.nRejected{c} = sum(isArtifact & isThisCondition);
+                thisAverage = mean(erpEEG(:,:,~isArtifact & isThisCondition),3);
+            else
+                ERP.nAccepted{c} = sum(~isArtifact);
+                ERP.nRejected{c} = sum(isArtifact);
+                thisAverage = mean(erpEEG(:,:,~isArtifact),3);
+            end
+            
+            %         plot(thisAverage(34,:));
+            %         hold on;
+            ERP.data{c} = thisAverage;
+            
         end
-        
-        % Do baseline correction
-        if ~isempty(baselinesettings)
-            baselinePoints = dsearchn(ERP.timepoints{c}',baselinesettings(:)); % Find the baseline indices
-            baseline = mean(erpEEG(:,baselinePoints(1):baselinePoints(2) ,:),2);
-            erpEEG = erpEEG - repmat(baseline,[1,length(ERP.timepoints{c}),1]); % EEG data, with baseline correction applied
-        end
-        
-        % ERP Artifact Rejection TODO: Make this a function
-        % Artifact Rejection - Gradient
-        maxAllowedStep = artifactsettings(1)*(1000/EEG.srate); % E.g. 10 uV/ms ~= 40 uV/4 ms... Equivalent to Analyzer?
-        gradient = abs(erpEEG(:,2:end,:) - erpEEG(:,1:end-1,:));
-        gradientViolation = squeeze(any(gradient > maxAllowedStep,2));
-        
-        % Artifact Rejection - Difference
-        maxAllowedDifference = artifactsettings(2);
-        diffEEG = max(erpEEG,[],2) - min(erpEEG,[],2);
-        differenceViolations = squeeze(diffEEG > maxAllowedDifference);
-        
-        allViolations = sum(gradientViolation) + sum(differenceViolations);
-        isArtifact = allViolations ~= 0;
-        
-        if dataEpoched
-            ERP.nAccepted{c} = sum(~isArtifact & isThisCondition);
-            ERP.nRejected{c} = sum(isArtifact & isThisCondition);
-            thisAverage = mean(erpEEG(:,:,~isArtifact & isThisCondition),3);
-        else
-            ERP.nAccepted{c} = sum(~isArtifact);
-            ERP.nRejected{c} = sum(isArtifact);
-            thisAverage = mean(erpEEG(:,:,~isArtifact),3);
-        end
-        
-        %         plot(thisAverage(34,:));
-        %         hold on;
-        ERP.data{c} = thisAverage;
         
         DISC.ERPSum = [DISC.ERPSum; thisParticipantNumber c ERP.nAccepted{c} ERP.nRejected{c}];
     end
@@ -446,8 +453,8 @@ for p = 1:numberofsubjects
         maxAllowedDifference = artifactsettings(2);
         diffEEG = max(fftEEG,[],2) - min(fftEEG,[],2);
         differenceViolations = squeeze(diffEEG > maxAllowedDifference);
-%         diffEEG = movmax(fftEEG,800/(1000/EEG.srate),2,'Endpoints','discard') - movmin(fftEEG,800/(1000/EEG.srate),2,'Endpoints','discard'); % e.g., 800 ms moving window
-%         differenceViolations = squeeze(any(diffEEG > maxAllowedDifference,2));
+        %         diffEEG = movmax(fftEEG,800/(1000/EEG.srate),2,'Endpoints','discard') - movmin(fftEEG,800/(1000/EEG.srate),2,'Endpoints','discard'); % e.g., 800 ms moving window
+        %         differenceViolations = squeeze(any(diffEEG > maxAllowedDifference,2));
         
         allViolations = sum(gradientViolation) + sum(differenceViolations);
         isArtifact = allViolations ~= 0;
@@ -531,6 +538,8 @@ for p = 1:numberofsubjects
         maxAllowedDifference = artifactsettings(2);
         diffEEG = max(wavEEG,[],2) - min(wavEEG,[],2);
         differenceViolations = squeeze(diffEEG > maxAllowedDifference);
+        %diffEEG = movmax(wavEEG,800/(1000/EEG.srate),2,'Endpoints','discard') - movmin(wavEEG,800/(1000/EEG.srate),2,'Endpoints','discard'); % e.g., 800 ms moving window
+        %differenceViolations = squeeze(any(diffEEG > maxAllowedDifference,2));
         
         allViolations = sum(gradientViolation) + sum(differenceViolations);
         isArtifact = allViolations ~= 0;
