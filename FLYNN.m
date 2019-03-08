@@ -1,5 +1,5 @@
 function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
-%FLYNN 3.5.1 Takes a config file pathname and a locations file pathname, then loads, organizes, and
+%FLYNN 3.5.2 Takes a config file pathname and a locations file pathname, then loads, organizes, and
 %analyzes continuous or epoched EEG data.
 %
 % C. Hassall and O. Krigolson
@@ -16,7 +16,7 @@ function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
 % plotdisc(myDISC);
 
 % FLYNN version number (major, minor, revision)
-version = '3.5.1';
+version = '3.5.2';
 
 % Load config file
 configFileId = fopen(pathToConfigFile);
@@ -264,11 +264,11 @@ for p = 1:numberofsubjects
         end
         
         if sum(isThisCondition) == 0
-            disp('No epochs found');
             ERP.timepoints{c} = [];
             ERP.data{c} = [];
             ERP.nAccepted{c} = NaN;
             ERP.nRejected{c} = NaN;
+            disp(['No ERP epochs found: ' ERP.conditions{c}]);
         else
             
             ERP.timepoints{c} = str2num(ERP.startTime{c}):1000/EEG.srate:str2num(ERP.endTime{c});
@@ -342,9 +342,12 @@ for p = 1:numberofsubjects
         isAnyCondition = sum([isThisCondition; zeros(1,length(isThisCondition))]) ~= 0;
         
         if sum(isAnyCondition) == 0
-            disp('Error: No epochs found');
-            return;
-        end
+            ALL.timepoints{c} = [];
+            ALL.data{c} = [];
+            ALL.nAccepted{c} = NaN;
+            ALL.nRejected{c} = NaN;
+            disp(['No ALL epochs found: ' ALL.conditions{c}]);
+        else
         
         ALL.timepoints{c} = str2num(ALL.startTime{c}):1000/EEG.srate:str2num(ALL.endTime{c});
         %ALL.data{c} = nan(EEG.nbchan,length(ALL.timepoints{c}),);
@@ -402,6 +405,8 @@ for p = 1:numberofsubjects
         ALL.whichMarker{c} = isThisCondition(:,isAnyCondition); % Marker for each trial
         ALL.isArtifact{c} = isArtifact;
         
+        end
+        
         DISC.ALLSum = [DISC.ALLSum; thisParticipantNumber c ALL.nAccepted{c} ALL.nRejected{c}];
     end
     
@@ -414,6 +419,14 @@ for p = 1:numberofsubjects
         for m = 1:numFftMarkersByCondition(c)
             isThisCondition = isThisCondition | strcmp(actualMarkers,FFT.markers{m,c});
         end
+        
+        if sum(isThisCondition) == 0
+            FFT.timepoints{c} = [];
+            FFT.data{c} = [];
+            FFT.nAccepted{c} = NaN;
+            FFT.nRejected{c} = NaN;
+            disp(['No FFT epochs found: ' FFT.conditions{c}]);
+        else
         
         FFT.timepoints{c} = str2num(FFT.startTime{c}):1000/EEG.srate:str2num(FFT.endTime{c});
         FFT.frequencyResolution{c} = EEG.srate / length(FFT.timepoints{c});
@@ -459,12 +472,6 @@ for p = 1:numberofsubjects
         allViolations = sum(gradientViolation) + sum(differenceViolations);
         isArtifact = allViolations ~= 0;
         
-        % Return if no epochs found
-        if sum(isThisCondition) == 0
-            disp('Error: No epochs found');
-            return;
-        end
-        
         % Store the number of good epochs for this condition and the
         % proportion rejected
         if dataEpoched
@@ -483,6 +490,8 @@ for p = 1:numberofsubjects
         % Call doFFT
         [FFT.data{c},FFT.frequencies{c}] = doFFT(trimmedEEG);
         
+        end
+        
         DISC.FFTSum = [DISC.FFTSum; thisParticipantNumber c FFT.nAccepted{c} FFT.nRejected{c}];
     end
     
@@ -495,11 +504,14 @@ for p = 1:numberofsubjects
         for m = 1:numWavMarkersByCondition(c)
             isThisCondition = isThisCondition | strcmp(actualMarkers,WAV.markers{m,c});
         end
-        % Return if no epochs found
+        
         if sum(isThisCondition) == 0
-            disp('Error: No epochs found');
-            return;
-        end
+            WAV.timepoints{c} = [];
+            WAV.data{c} = [];
+            WAV.nAccepted{c} = NaN;
+            WAV.nRejected{c} = NaN;
+            disp(['No WAV epochs found: ' WAV.conditions{c}]);
+        else
         
         WAV.timepoints{c} = str2num(WAV.startTime{c}):1000/EEG.srate:str2num(WAV.endTime{c});
         WAV.frequencyResolution{c} = EEG.srate / length(WAV.timepoints{c});
@@ -564,6 +576,8 @@ for p = 1:numberofsubjects
         num_frex = str2num(WAV.frequencySteps{c});
         range_cycles = str2num(WAV.rangeCycles{c});
         [WAV.data{c},WAV.dataPercent{c},WAV.frequencies{c}] = doWavelet(trimmedEEG,baseline_windows,min_freq,max_freq,num_frex,range_cycles);
+        
+        end
         
         DISC.WAVSum = [DISC.WAVSum; thisParticipantNumber c WAV.nAccepted{c} WAV.nRejected{c}];
     end
