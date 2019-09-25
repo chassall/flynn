@@ -1,5 +1,5 @@
 function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
-%FLYNN 3.5.2 Takes a config file pathname and a locations file pathname, then loads, organizes, and
+%FLYNN 3.5.3 Takes a config file pathname and a locations file pathname, then loads, organizes, and
 %analyzes continuous or epoched EEG data.
 %
 % C. Hassall and O. Krigolson
@@ -16,7 +16,7 @@ function DISC = FLYNN( pathToConfigFile, pathToLocsFile )
 % plotdisc(myDISC);
 
 % FLYNN version number (major, minor, revision)
-version = '3.5.2';
+version = '3.5.3';
 
 % Load config file
 configFileId = fopen(pathToConfigFile);
@@ -237,7 +237,12 @@ for p = 1:numberofsubjects
         for m = 1:length(allMarkers)
             thisSetOfMarkers = allMarkers{m};
             if ~iscell(thisSetOfMarkers) % NEW November 27 - need this in case there is only one marker in epoch
-                actualMarkers{m} = thisSetOfMarkers;
+                
+                if isnumeric(thisSetOfMarkers)
+                    actualMarkers{m} = num2str(thisSetOfMarkers);
+                else
+                    actualMarkers{m} = thisSetOfMarkers;
+                end
             else
                 theseLatencies = cell2mat(latencies{m});
                 [~, whichOne] = min(abs(theseLatencies - abs(EEG.xmin)*1000000)); % Find the latency (in nanoseconds?) closest to 0 ms
@@ -245,13 +250,24 @@ for p = 1:numberofsubjects
                     disp('Error: Timing error in EEGLAB file');
                     return;
                 end
-                actualMarkers{m} = thisSetOfMarkers{whichOne};
+                
+                if isnumeric(thisSetOfMarkers{whichOne})
+                    actualMarkers{m} = num2str(thisSetOfMarkers{whichOne});
+                else
+                    actualMarkers{m} = thisSetOfMarkers{whichOne};
+                end
             end
         end
     else
-        allMarkers = {EEG.event.type};
+        if isnumeric(EEG.event(1).type)
+            allMarkers = [EEG.event.type];
+            for m = 1:length(allMarkers)
+                actualMarkers{m} = num2str(allMarkers(m));
+            end
+        else
+            allMarkers = {EEG.event.type};
+        end
         latencies = cell2mat({EEG.event.latency}');
-        actualMarkers = allMarkers;
     end
     
     %% ERP Analysis

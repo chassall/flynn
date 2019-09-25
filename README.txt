@@ -6,6 +6,9 @@ FLYNN 1.0 average eeg text file input, single .mat output
 
 Major/Minor Revision History
 
+3.5.3
+Can handle non-string markers now (i.e., ints).
+
 3.5.0
 FLYNN now interpolates missing channels and reorders them to match the user-specified locs file.
 
